@@ -1,0 +1,26 @@
+- name: Setup mini PC
+  hosts: all
+
+  vars:
+    dest_dir: "~/setup"
+  vars_files:
+    - vars/secrets.yml
+
+  tasks:
+  - name: Make setup directory if it doesn't exist
+    ansible.builtin.file:
+      path: "{{ dest_dir }}"
+      state: directory
+      mode: '0755'
+
+  - name: Copy compose.yml
+    ansible.builtin.template:
+      src: templates/compose.yml.j2
+      dest: "{{ dest_dir }}/compose.yml"
+      mode: '0600'
+
+  - name: Run Docker Compose up
+    community.docker.docker_compose_v2:
+      project_src: "{{ dest_dir }}"
+      state: present
+      pull: always

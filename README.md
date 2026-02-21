@@ -5,6 +5,20 @@ mini-pc のセットアップ用 Ansible プレイブックです。
 ## 必要なもの
 - Ansible
 
+## 前提条件
+
+### GH_TOKEN の設定
+
+plant-diary のコンテナイメージは ghcr.io から取得するため、GitHub Personal Access Token (PAT) が必要です。
+
+1. GitHubで `read:packages` スコープを持つPATを作成します。
+2. `.devcontainer/.env-template` をコピーして `.devcontainer/.env` を作成します。
+3. `GH_TOKEN` に作成したPATを設定します。
+
+```
+GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
 ## 使い方
 
 1. `~/.ssh/config` に mini-pc への接続設定を行います。

@@ -29,6 +29,12 @@
     replace: "{{ gemini_api_key }}"
   when: not env_file.stat.exists
 
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: "USERNAME"
+    password: "{{ lookup('env', 'GH_TOKEN') }}"
+
 - name: Run Docker Compose up for plant-diary
   community.docker.docker_compose_v2:
     project_src: "{{ src_dir }}/plant-diary"

@@ -1,0 +1,47 @@
+- name: Set plant-diary variables
+  ansible.builtin.set_fact:
+    src_dir: "{{ ansible_facts['env']['HOME'] }}/src"
+
+- name: Clone plant-diary
+  ansible.builtin.git:
+    repo: "https://github.com/canpok1/plant-diary.git"
+    dest: "{{ src_dir }}/plant-diary"
+    version: main
+    force: yes
+
+- name: check .env file exists
+  ansible.builtin.stat:
+    path: "{{ src_dir }}/plant-diary/.env"
+  register: env_file
+
+- name: Create .env file for plant-diary
+  ansible.builtin.copy:
+    src: "{{ src_dir }}/plant-diary/.env.example"
+    dest: "{{ src_dir }}/plant-diary/.env"
+    remote_src: yes
+    force: no
+  when: not env_file.stat.exists
+
+- name: Replace placeholders in .env file
+  ansible.builtin.replace:
+    path: "{{ src_dir }}/plant-diary/.env"
+    regexp: 'your_api_key_here'
+    replace: "{{ gemini_api_key }}"
+  when: not env_file.stat.exists
+
+- name: Docker Composeでコンテナを立ち上げる
+  community.docker.docker_compose_v2:
+    project_src: "{{ src_dir }}/plant-diary"
+    state: present
+
+- name: Add execute permission to capture.sh
+  ansible.builtin.file:
+    path: "{{ src_dir }}/plant-diary/scripts/capture.sh"
+    mode: '0755'
+
+- name: Add cron job to run capture.sh
+  ansible.builtin.cron:
+    name: "Run capture script"
+    job: "{{ src_dir }}/plant-diary/scripts/capture.sh -F 1 -S 100"
+    minute: "0"
+    hour: "3"

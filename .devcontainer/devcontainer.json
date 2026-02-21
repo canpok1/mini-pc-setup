@@ -3,6 +3,7 @@
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
+	"runArgs": ["--env-file", "${localWorkspaceFolder}/.devcontainer/.env"],
 	"features": {
 		"ghcr.io/devcontainers-extra/features/ansible:2": {}
 	},

@@ -48,14 +48,14 @@
     project_src: "{{ src_dir }}/plant-diary"
     state: present
 
-- name: Add execute permission to capture.sh
+- name: Add execute permission to capture_auto.sh
   ansible.builtin.file:
-    path: "{{ src_dir }}/plant-diary/scripts/capture.sh"
+    path: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh"
     mode: '0755'
 
-- name: Add cron job to run capture.sh
+- name: Add cron job to run capture_auto.sh
   ansible.builtin.cron:
     name: "Run capture script"
-    job: "{{ src_dir }}/plant-diary/scripts/capture.sh -F 1 -S 100"
+    job: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh 0.25 20"
     minute: "0"
     hour: "3"

@@ -10,7 +10,7 @@ ping: ## 接続確認
 	ansible all -i $(INVENTORY) -m ping
 
 deploy: ## プレイブック実行
-	ansible-playbook -i $(INVENTORY) playbook.yml --ask-vault-pass
+	ansible-playbook -i $(INVENTORY) playbook.yml --ask-vault-pass --ask-become-pass
 
 edit-secrets: ## 機密情報の編集
 	ansible-vault edit vars/secrets.yml

@@ -2,6 +2,14 @@
   ansible.builtin.set_fact:
     src_dir: "{{ ansible_facts['env']['HOME'] }}/src"
 
+- name: Install required packages for plant-diary
+  ansible.builtin.apt:
+    name:
+      - imagemagick
+      - fswebcam
+    state: present
+  become: yes
+
 - name: Clone plant-diary
   ansible.builtin.git:
     repo: "https://github.com/canpok1/plant-diary.git"

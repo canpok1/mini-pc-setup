@@ -56,6 +56,6 @@
 - name: Add cron job to run capture_auto.sh
   ansible.builtin.cron:
     name: "Run capture script"
-    job: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh 0.25 20"
+    job: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh 0.25 20 --api-url http://localhost:8080 --upload-key {{ upload_key }}"
     minute: "0"
     hour: "3"

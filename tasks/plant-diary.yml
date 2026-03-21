@@ -1,6 +1,26 @@
 - name: Set plant-diary variables
   ansible.builtin.set_fact:
     src_dir: "{{ ansible_facts['env']['HOME'] }}/src"
+    backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
+
+- name: Check if plant-diary data directory exists on remote
+  ansible.builtin.stat:
+    path: "{{ src_dir }}/plant-diary/data"
+  register: plant_diary_data_dir
+
+- name: Create local backup directory for plant-diary data
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/backup/plant-diary/data_{{ backup_timestamp }}"
+    state: directory
+  delegate_to: localhost
+  when: plant_diary_data_dir.stat.exists
+
+- name: Backup plant-diary data directory from remote to local
+  ansible.posix.synchronize:
+    src: "{{ src_dir }}/plant-diary/data/"
+    dest: "{{ playbook_dir }}/backup/plant-diary/data_{{ backup_timestamp }}/"
+    mode: pull
+  when: plant_diary_data_dir.stat.exists
 
 - name: Install required packages for plant-diary
   ansible.builtin.apt:
@@ -56,6 +76,6 @@
 - name: Add cron job to run capture_auto.sh
   ansible.builtin.cron:
     name: "Run capture script"
-    job: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh 0.25 20 --api-url http://localhost:8080 --upload-key {{ upload_key }}"
+    job: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh --api-url http://localhost:8080 --script-key {{ script_key }}"
     minute: "0"
     hour: "3"

@@ -77,5 +77,4 @@
   ansible.builtin.cron:
     name: "Run capture script"
     job: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh --api-url http://localhost:8080 --script-key {{ script_key }}"
-    minute: "0"
-    hour: "3"
+    minute: "*/5"

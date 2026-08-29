@@ -28,19 +28,6 @@
     dest: "{{ src_dir }}/health-connect-converter/secrets/sa-key.json"
     mode: '0600'
 
-- name: Check config.yaml exists for health-connect-converter
-  ansible.builtin.stat:
-    path: "{{ src_dir }}/health-connect-converter/config.yaml"
-  register: health_connect_converter_config_file
-
-- name: Create config.yaml for health-connect-converter from example
-  ansible.builtin.copy:
-    src: "{{ src_dir }}/health-connect-converter/config.example.yaml"
-    dest: "{{ src_dir }}/health-connect-converter/config.yaml"
-    remote_src: yes
-    force: no
-  when: not health_connect_converter_config_file.stat.exists
-
 - name: Login to GHCR
   community.docker.docker_login:
     registry_url: ghcr.io

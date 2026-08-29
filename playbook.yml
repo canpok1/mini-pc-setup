@@ -11,3 +11,6 @@
 
   - name: Setup plant-diary
     ansible.builtin.import_tasks: tasks/plant-diary.yml
+
+  - name: Setup health-connect-converter
+    ansible.builtin.import_tasks: tasks/health-connect-converter.yml

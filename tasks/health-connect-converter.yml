@@ -1,0 +1,53 @@
+- name: Set health-connect-converter variables
+  ansible.builtin.set_fact:
+    src_dir: "{{ ansible_facts['env']['HOME'] }}/src"
+
+- name: Clone health-connect-converter
+  ansible.builtin.git:
+    repo: "https://github.com/canpok1/health-connect-converter.git"
+    dest: "{{ src_dir }}/health-connect-converter"
+    version: main
+    force: yes
+
+- name: Create data directory for health-connect-converter
+  ansible.builtin.file:
+    path: /srv/health-connect-converter/data
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Create secrets directory for health-connect-converter
+  ansible.builtin.file:
+    path: "{{ src_dir }}/health-connect-converter/secrets"
+    state: directory
+    mode: '0700'
+
+- name: Place service account key for health-connect-converter
+  ansible.builtin.copy:
+    content: "{{ health_connect_converter_sa_key }}"
+    dest: "{{ src_dir }}/health-connect-converter/secrets/sa-key.json"
+    mode: '0600'
+
+- name: Check config.yaml exists for health-connect-converter
+  ansible.builtin.stat:
+    path: "{{ src_dir }}/health-connect-converter/config.yaml"
+  register: health_connect_converter_config_file
+
+- name: Create config.yaml for health-connect-converter from example
+  ansible.builtin.copy:
+    src: "{{ src_dir }}/health-connect-converter/config.example.yaml"
+    dest: "{{ src_dir }}/health-connect-converter/config.yaml"
+    remote_src: yes
+    force: no
+  when: not health_connect_converter_config_file.stat.exists
+
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: "USERNAME"
+    password: "{{ lookup('env', 'GH_TOKEN') }}"
+
+- name: Run Docker Compose up for health-connect-converter
+  community.docker.docker_compose_v2:
+    project_src: "{{ src_dir }}/health-connect-converter"
+    state: present

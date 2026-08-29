@@ -10,7 +10,7 @@ mini-pc のセットアップ用 Ansible プレイブックです。
 
 ### GH_TOKEN の設定
 
-plant-diary のコンテナイメージは ghcr.io から取得するため、GitHub Personal Access Token (PAT) が必要です。
+plant-diary・health-connect-converter のコンテナイメージは ghcr.io から取得するため、GitHub Personal Access Token (PAT) が必要です。
 
 1. GitHubで `read:packages` スコープを持つPATを作成します。
 2. `.devcontainer/.env-template` をコピーして `.devcontainer/.env` を作成します。
@@ -19,6 +19,10 @@ plant-diary のコンテナイメージは ghcr.io から取得するため、Gi
 ```
 GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 ```
+
+### health-connect-converter のサービスアカウント鍵
+
+`vars/secrets.yml` の `health_connect_converter_sa_key` に、Google Cloud のサービスアカウント鍵（JSON）の中身をそのまま設定してください（`make edit-secrets` で編集）。
 
 ## 使い方
 

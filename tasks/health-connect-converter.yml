@@ -1,6 +1,26 @@
 - name: Set health-connect-converter variables
   ansible.builtin.set_fact:
     src_dir: "{{ ansible_facts['env']['HOME'] }}/src"
+    backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
+
+- name: Check if health-connect-converter data directory exists on remote
+  ansible.builtin.stat:
+    path: "{{ src_dir }}/health-connect-converter/data"
+  register: health_connect_converter_data_dir
+
+- name: Create local backup directory for health-connect-converter data
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/backup/health-connect-converter/data_{{ backup_timestamp }}"
+    state: directory
+  delegate_to: localhost
+  when: health_connect_converter_data_dir.stat.exists
+
+- name: Backup health-connect-converter data directory from remote to local
+  ansible.posix.synchronize:
+    src: "{{ src_dir }}/health-connect-converter/data/"
+    dest: "{{ playbook_dir }}/backup/health-connect-converter/data_{{ backup_timestamp }}/"
+    mode: pull
+  when: health_connect_converter_data_dir.stat.exists
 
 - name: Clone health-connect-converter
   ansible.builtin.git:
@@ -8,13 +28,6 @@
     dest: "{{ src_dir }}/health-connect-converter"
     version: main
     force: yes
-
-- name: Create data directory for health-connect-converter
-  ansible.builtin.file:
-    path: /srv/health-connect-converter/data
-    state: directory
-    mode: '0755'
-  become: yes
 
 - name: Create secrets directory for health-connect-converter
   ansible.builtin.file:

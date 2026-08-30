@@ -35,6 +35,17 @@
     state: directory
     mode: '0700'
 
+- name: Create data directory for health-connect-converter with container's nonroot ownership
+  # 65532 は distroless イメージの nonroot ユーザーの固定UID/GID。
+  # bind mount先が root 所有だとコンテナ内から書き込めずSQLiteが開けない。
+  ansible.builtin.file:
+    path: "{{ src_dir }}/health-connect-converter/data"
+    state: directory
+    owner: '65532'
+    group: '65532'
+    mode: '0755'
+  become: yes
+
 - name: Place service account key for health-connect-converter
   ansible.builtin.copy:
     content: "{{ health_connect_converter_sa_key }}"

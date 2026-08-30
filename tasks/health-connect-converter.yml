@@ -35,14 +35,14 @@
     state: directory
     mode: '0700'
 
-- name: Create data directory for health-connect-converter with container's nonroot ownership
-  # 65532 は distroless イメージの nonroot ユーザーの固定UID/GID。
-  # bind mount先が root 所有だとコンテナ内から書き込めずSQLiteが開けない。
+- name: Create data directory for health-connect-converter with host user's ownership
+  # コンテナはHC_UID/HC_GID（.env経由）でこの接続ユーザーと同じUID/GIDで動かす。
+  # bind mount先の所有者が異なるとコンテナ内から書き込めずSQLiteが開けない（health-connect-converter ADR 0006）。
   ansible.builtin.file:
     path: "{{ src_dir }}/health-connect-converter/data"
     state: directory
-    owner: '65532'
-    group: '65532'
+    owner: "{{ ansible_facts['user_uid'] }}"
+    group: "{{ ansible_facts['user_gid'] }}"
     mode: '0755'
   become: yes
 

@@ -24,6 +24,10 @@ GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 
 `vars/secrets.yml` の `health_connect_converter_sa_key` に、Google Cloud のサービスアカウント鍵（JSON）の中身をそのまま設定してください（`make edit-secrets` で編集）。
 
+### health-connect-converter の監視先ID
+
+`vars/secrets.yml` の `health_connect_converter_drive_folder_id`（監視する Drive フォルダID）と `health_connect_converter_spreadsheet_id`（出力先スプレッドシートID）を設定してください（`make edit-secrets` で編集）。
+
 ## 使い方
 
 1. `~/.ssh/config` に mini-pc への接続設定を行います。

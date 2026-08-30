@@ -41,6 +41,12 @@
     dest: "{{ src_dir }}/health-connect-converter/secrets/sa-key.json"
     mode: '0600'
 
+- name: Place .env file for health-connect-converter
+  ansible.builtin.template:
+    src: health-connect-converter.env.j2
+    dest: "{{ src_dir }}/health-connect-converter/.env"
+    mode: '0600'
+
 - name: Login to GHCR
   community.docker.docker_login:
     registry_url: ghcr.io

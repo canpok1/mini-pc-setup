@@ -28,6 +28,10 @@ GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 
 `vars/secrets.yml` の `health_connect_converter_drive_folder_id`（監視する Drive フォルダID）と `health_connect_converter_spreadsheet_id`（出力先スプレッドシートID）を設定してください（`make edit-secrets` で編集）。
 
+## コンテナの自動更新
+
+plant-diary・health-connect-converter は [nicholas-fedor/watchtower](https://github.com/nicholas-fedor/watchtower)（`containrrr/watchtower` のメンテ継続フォーク。判断の経緯は `docs/adr/0001-adopt-watchtower-fork-for-container-auto-update.md`）により5分間隔で自動更新されます。GHCRの認証はGH_TOKENでのログイン時に生成される `~/.docker/config.json` を再利用するため、追加設定は不要です。
+
 ## 使い方
 
 1. `~/.ssh/config` に mini-pc への接続設定を行います。

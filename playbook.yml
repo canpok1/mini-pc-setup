@@ -15,5 +15,8 @@
   - name: Setup health-connect-converter
     ansible.builtin.import_tasks: tasks/health-connect-converter.yml
 
+  - name: Setup trading-studio
+    ansible.builtin.import_tasks: tasks/trading-studio.yml
+
   - name: Setup watchtower
     ansible.builtin.import_tasks: tasks/watchtower.yml

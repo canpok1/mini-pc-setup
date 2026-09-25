@@ -2,12 +2,13 @@
   ansible.builtin.set_fact:
     watchtower_setup_dir: "{{ ansible_facts['env']['HOME'] }}/setup-watchtower"
     watchtower_docker_config_dir: "{{ ansible_facts['env']['HOME'] }}/.docker"
-    # plant-diary/health-connect-converterはdocker_compose_v2のproject_nameを指定していないため、
+    # plant-diary/health-connect-converter/trading-studioはdocker_compose_v2のproject_nameを指定していないため、
     # project_srcディレクトリ名（basename）がプロジェクト名になり、コンテナ名は
     # <project>-<service>-1 になる想定（Compose v2のデフォルト命名規則）。実機のdocker psで要確認。
     watchtower_target_containers:
       - plant-diary-plant-diary-1
       - health-connect-converter-health-connect-converter-1
+      - trading-studio-trading-studio-1
 
 - name: Make watchtower setup directory if it doesn't exist
   ansible.builtin.file:

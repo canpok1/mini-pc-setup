@@ -18,5 +18,8 @@
   - name: Setup trading-studio
     ansible.builtin.import_tasks: tasks/trading-studio.yml
 
+  - name: Setup tailscale
+    ansible.builtin.import_tasks: tasks/tailscale.yml
+
   - name: Setup watchtower
     ansible.builtin.import_tasks: tasks/watchtower.yml

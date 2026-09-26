@@ -1,0 +1,52 @@
+- name: Set trading-studio variables
+  ansible.builtin.set_fact:
+    src_dir: "{{ ansible_facts['env']['HOME'] }}/src"
+    backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
+
+- name: Check if trading-studio data directory exists on remote
+  ansible.builtin.stat:
+    path: "{{ src_dir }}/trading-studio/data"
+  register: trading_studio_data_dir
+
+- name: Create local backup directory for trading-studio data
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/backup/trading-studio/data_{{ backup_timestamp }}"
+    state: directory
+  delegate_to: localhost
+  when: trading_studio_data_dir.stat.exists
+
+- name: Backup trading-studio data directory from remote to local
+  ansible.posix.synchronize:
+    src: "{{ src_dir }}/trading-studio/data/"
+    dest: "{{ playbook_dir }}/backup/trading-studio/data_{{ backup_timestamp }}/"
+    mode: pull
+  when: trading_studio_data_dir.stat.exists
+
+- name: Clone trading-studio
+  ansible.builtin.git:
+    repo: "https://github.com/canpok1/trading-studio.git"
+    dest: "{{ src_dir }}/trading-studio"
+    version: main
+    force: yes
+
+- name: Create data directory for trading-studio with container's fixed UID/GID
+  # コンテナは1000:1000固定で動く。bind mount先の所有者が異なるとコンテナ内から書き込めずSQLiteが開けない。
+  ansible.builtin.file:
+    path: "{{ src_dir }}/trading-studio/data"
+    state: directory
+    owner: '1000'
+    group: '1000'
+    mode: '0755'
+  become: yes
+
+- name: Place .env file for trading-studio
+  # 後のフェーズでAPIキーを置く（DBファイルと一緒に持ち出されないよう、DBには入れない）
+  ansible.builtin.template:
+    src: trading-studio.env.j2
+    dest: "{{ src_dir }}/trading-studio/.env"
+    mode: '0600'
+
+- name: Run Docker Compose up for trading-studio
+  community.docker.docker_compose_v2:
+    project_src: "{{ src_dir }}/trading-studio"
+    state: present

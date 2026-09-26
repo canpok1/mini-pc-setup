@@ -10,7 +10,7 @@ mini-pc のセットアップ用 Ansible プレイブックです。
 
 ### GH_TOKEN の設定
 
-plant-diary・health-connect-converter のコンテナイメージは ghcr.io から取得するため、GitHub Personal Access Token (PAT) が必要です。
+plant-diary・health-connect-converter のコンテナイメージは ghcr.io から取得するため（trading-studio のイメージは公開のため不要）、GitHub Personal Access Token (PAT) が必要です。
 
 1. GitHubで `read:packages` スコープを持つPATを作成します。
 2. `.devcontainer/.env-template` をコピーして `.devcontainer/.env` を作成します。
@@ -28,9 +28,15 @@ GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 
 `vars/secrets.yml` の `health_connect_converter_drive_folder_id`（監視する Drive フォルダID）と `health_connect_converter_spreadsheet_id`（出力先スプレッドシートID）を設定してください（`make edit-secrets` で編集）。
 
+### trading-studio の開き方
+
+trading-studio は mini-pc の `3000` 番ポートで自宅 LAN 内へ公開します。スマホからは `http://<mini-pc の LAN 内アドレス>:3000/` を開きます。ルーターで外へ転送しないでください。実取引を始める前に Tailscale 経由へ切り替える予定です（trading-studio の ADR 0004）。
+
+**trading-studio は cloudflared 経由で公開しないでください。** インターネットに公開され、ログイン機能の無い画面から誰でも自動取引を操作できてしまいます。
+
 ## コンテナの自動更新
 
-plant-diary・health-connect-converter は [nicholas-fedor/watchtower](https://github.com/nicholas-fedor/watchtower)（`containrrr/watchtower` のメンテ継続フォーク。判断の経緯は `docs/adr/0001-adopt-watchtower-fork-for-container-auto-update.md`）により5分間隔で自動更新されます。GHCRの認証はGH_TOKENでのログイン時に生成される `~/.docker/config.json` を再利用するため、追加設定は不要です。
+plant-diary・health-connect-converter・trading-studio は [nicholas-fedor/watchtower](https://github.com/nicholas-fedor/watchtower)（`containrrr/watchtower` のメンテ継続フォーク。判断の経緯は `docs/adr/0001-adopt-watchtower-fork-for-container-auto-update.md`）により5分間隔で自動更新されます。GHCRの認証はGH_TOKENでのログイン時に生成される `~/.docker/config.json` を再利用するため、追加設定は不要です。
 
 ## 使い方
 

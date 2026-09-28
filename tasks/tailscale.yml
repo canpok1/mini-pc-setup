@@ -59,8 +59,7 @@
   when: tailscale_logged_in
 
 - name: Serve trading-studio over HTTPS within the tailnet
-  # Serveはtailnet内からだけ届き、インターネットには公開されない。
-  # 3000番ポートの自宅LANへの公開は、trading-studio側で127.0.0.1に絞るまで残る（trading-studio の ADR 0004）
+  # コンテナは127.0.0.1:3000にだけ公開している。Serveはtailnet内からだけ届き、インターネットには公開されない
   ansible.builtin.command: tailscale serve --bg 3000
   become: yes
   # tailnet で HTTPS 証明書が無効だと、有効にするまで待ち続けるため打ち切る

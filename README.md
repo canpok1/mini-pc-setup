@@ -32,6 +32,13 @@ GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 
 trading-studio は mini-pc の `3000` 番ポートで自宅 LAN 内へ公開します。スマホからは `http://<mini-pc の LAN 内アドレス>:3000/` を開きます。ルーターで外へ転送しないでください。実取引を始める前に Tailscale 経由へ切り替える予定です（trading-studio の ADR 0004）。
 
+あわせて Tailscale Serve で tailnet 内へ HTTPS でも公開します。`make deploy` が Tailscale の導入と Serve の設定を行いますが、次の2つは初回のみ手動で行ってください。
+
+1. Tailscale の管理画面で MagicDNS と HTTPS 証明書を有効にする
+2. mini-pc で `sudo tailscale up` を実行してログインする（認証用の鍵を secrets に置かないため）
+
+ログイン前に `make deploy` すると Serve の設定は飛ばされます。ログイン後にもう一度実行してください。スマホからは Tailscale に接続した状態で `https://<mini-pc のマシン名>.<tailnet 名>.ts.net/` を開きます。
+
 **trading-studio は cloudflared 経由で公開しないでください。** インターネットに公開され、ログイン機能の無い画面から誰でも自動取引を操作できてしまいます。
 
 ## コンテナの自動更新

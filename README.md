@@ -39,9 +39,23 @@ trading-studio は mini-pc の `127.0.0.1:3000` にだけ公開し、Tailscale S
 
 **trading-studio は cloudflared 経由で公開しないでください。** インターネットに公開され、ログイン機能の無い画面から誰でも自動取引を操作できてしまいます。
 
+### Bifrost（AI ゲートウェイ）の初期設定
+
+アプリからの AI の呼び出しをまとめる [Bifrost](https://github.com/maximhq/bifrost) を `~/services/bifrost/` で動かします（ADR 0002・0003）。Gemini などの本物の API キーは Bifrost の管理画面にだけ登録し、アプリには Bifrost が発行する仮想キーを渡します。初回のみ次を行ってください。
+
+1. `make edit-secrets` で次の2つを追加します。値は `openssl rand -base64 32` などで作ります。
+   - `bifrost_encryption_key`: 登録した API キーを暗号化する鍵。**後から変えると登録済みのキーが読めなくなります。** 失くさないよう別に控えてください
+   - `bifrost_setup_token`: 最初の管理者アカウントを作るときにだけ使います
+2. `make deploy` を実行します。
+3. Tailscale に接続した端末で `https://<mini-pc のマシン名>.<tailnet 名>.ts.net:8443/` を開き、設定の Security でパスワード保護を有効にします。Setup token の欄には `bifrost_setup_token` の値を入れます。
+4. 同じ画面で「Enforce Virtual Keys on Inference」が有効になっていることを確かめます（仮想キーの無い推論リクエストを断る設定）。
+5. Gemini などの API キーを登録し、アプリごとに仮想キーを発行します。
+
+アプリからは Docker ネットワーク `ai` に参加し、`http://bifrost:8080` を呼びます。Bifrost のバージョンは `tasks/bifrost.yml` の `bifrost_version` で固定しており、自動更新はしません。
+
 ## コンテナの自動更新
 
-plant-diary・health-connect-converter・trading-studio は [nicholas-fedor/watchtower](https://github.com/nicholas-fedor/watchtower)（`containrrr/watchtower` のメンテ継続フォーク。判断の経緯は `docs/adr/0001-adopt-watchtower-fork-for-container-auto-update.md`）により5分間隔で自動更新されます。GHCRの認証はGH_TOKENでのログイン時に生成される `~/.docker/config.json` を再利用するため、追加設定は不要です。
+plant-diary・health-connect-converter・trading-studio は [nicholas-fedor/watchtower](https://github.com/nicholas-fedor/watchtower)（`containrrr/watchtower` のメンテ継続フォーク。判断の経緯は `docs/adr/0001-adopt-watchtower-fork-for-container-auto-update.md`）により5分間隔で自動更新されます（Bifrost は対象外）。GHCRの認証はGH_TOKENでのログイン時に生成される `~/.docker/config.json` を再利用するため、追加設定は不要です。
 
 ## 使い方
 

@@ -67,3 +67,12 @@
   when:
     - tailscale_logged_in
     - "'127.0.0.1:3000' not in tailscale_serve_status.stdout"
+
+- name: Serve bifrost admin UI over HTTPS within the tailnet
+  # 管理画面は127.0.0.1:18080にだけ公開している。trading-studioが443を使うため8443で出す
+  ansible.builtin.command: tailscale serve --bg --https=8443 18080
+  become: yes
+  timeout: 60
+  when:
+    - tailscale_logged_in
+    - "'127.0.0.1:18080' not in tailscale_serve_status.stdout"

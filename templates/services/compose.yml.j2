@@ -36,6 +36,10 @@ services:
       - "127.0.0.1:3000:3000"
     volumes:
       - ./trading-studio/data:/app/data
+    # 採点・アドバイスで Bifrost を呼ぶ。接続先はアプリの設定画面で http://bifrost:8080/openai を指定する
+    networks:
+      - default
+      - ai
 
 secrets:
   bifrost_encryption_key:

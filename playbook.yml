@@ -18,6 +18,9 @@
   - name: Setup trading-studio
     ansible.builtin.import_tasks: tasks/trading-studio.yml
 
+  - name: Setup bifrost
+    ansible.builtin.import_tasks: tasks/bifrost.yml
+
   - name: Setup tailscale
     ansible.builtin.import_tasks: tasks/tailscale.yml
 

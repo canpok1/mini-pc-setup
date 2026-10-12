@@ -1,0 +1,83 @@
+- name: Set bifrost variables
+  ansible.builtin.set_fact:
+    bifrost_dir: "{{ ansible_facts['env']['HOME'] }}/services/bifrost"
+    # 自作アプリではないため watchtower の対象にせず、バージョンを固定して手で上げる（ADR 0003）
+    bifrost_version: v2.2.6
+    bifrost_admin_port: 18080
+    backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
+
+- name: Check if bifrost data directory exists on remote
+  ansible.builtin.stat:
+    path: "{{ bifrost_dir }}/data"
+  register: bifrost_data_dir
+
+- name: Create local backup directory for bifrost data
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/backup/bifrost/data_{{ backup_timestamp }}"
+    state: directory
+  delegate_to: localhost
+  when: bifrost_data_dir.stat.exists
+
+- name: Backup bifrost data directory from remote to local
+  # 登録した API キーは BIFROST_ENCRYPTION_KEY で暗号化されて data/ に入る。暗号化キーは secrets/ にあり、ここには含めない
+  ansible.posix.synchronize:
+    src: "{{ bifrost_dir }}/data/"
+    dest: "{{ playbook_dir }}/backup/bifrost/data_{{ backup_timestamp }}/"
+    mode: pull
+  when: bifrost_data_dir.stat.exists
+
+- name: Make bifrost directory if it doesn't exist
+  ansible.builtin.file:
+    path: "{{ bifrost_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create data directory for bifrost with container's fixed UID/GID
+  # イメージは UID 1000 で動く。bind mount 先の所有者が異なるとコンテナ内から書き込めず起動に失敗する
+  ansible.builtin.file:
+    path: "{{ bifrost_dir }}/data"
+    state: directory
+    owner: '1000'
+    group: '1000'
+    mode: '0755'
+  become: yes
+
+- name: Create secrets directory for bifrost
+  ansible.builtin.file:
+    path: "{{ bifrost_dir }}/secrets"
+    state: directory
+    owner: '1000'
+    group: '1000'
+    mode: '0700'
+  become: yes
+
+- name: Place secrets for bifrost
+  # compose の secrets はファイルをそのまま bind mount するため、コンテナの UID 1000 が読める所有者にする
+  ansible.builtin.copy:
+    content: "{{ item.value }}"
+    dest: "{{ bifrost_dir }}/secrets/{{ item.name }}"
+    owner: '1000'
+    group: '1000'
+    mode: '0400'
+  loop:
+    - { name: bifrost_encryption_key, value: "{{ bifrost_encryption_key }}" }
+    - { name: bifrost_setup_token, value: "{{ bifrost_setup_token }}" }
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+  become: yes
+
+- name: Create docker network for AI gateway
+  community.docker.docker_network:
+    name: ai
+
+- name: Copy bifrost compose.yml
+  ansible.builtin.template:
+    src: templates/bifrost/compose.yml.j2
+    dest: "{{ bifrost_dir }}/compose.yml"
+    mode: '0644'
+
+- name: Run Docker Compose up for bifrost
+  community.docker.docker_compose_v2:
+    project_src: "{{ bifrost_dir }}"
+    state: present

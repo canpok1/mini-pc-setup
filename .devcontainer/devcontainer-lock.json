@@ -1,0 +1,9 @@
+{
+  "features": {
+    "ghcr.io/devcontainers-extra/features/ansible:2": {
+      "version": "2.1.2",
+      "resolved": "ghcr.io/devcontainers-extra/features/ansible@sha256:0b0c1e75e3c0fc9036d2d73277ded8d7c7589cb5971fc51549c38eaa0d5893ca",
+      "integrity": "sha256:0b0c1e75e3c0fc9036d2d73277ded8d7c7589cb5971fc51549c38eaa0d5893ca"
+    }
+  }
+}

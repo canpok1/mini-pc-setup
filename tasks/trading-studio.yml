@@ -1,52 +1,80 @@
 - name: Set trading-studio variables
   ansible.builtin.set_fact:
-    src_dir: "{{ ansible_facts['env']['HOME'] }}/src"
+    trading_studio_dir: "{{ ansible_facts['env']['HOME'] }}/services/trading-studio"
+    # ADR 0004 以前の配置。アプリのリポジトリを clone し、その中の compose で動かしていた
+    trading_studio_legacy_dir: "{{ ansible_facts['env']['HOME'] }}/src/trading-studio"
     backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
 
 - name: Check if trading-studio data directory exists on remote
   ansible.builtin.stat:
-    path: "{{ src_dir }}/trading-studio/data"
+    path: "{{ trading_studio_dir }}/data"
   register: trading_studio_data_dir
+
+- name: Check if legacy trading-studio data directory exists on remote
+  ansible.builtin.stat:
+    path: "{{ trading_studio_legacy_dir }}/data"
+  register: trading_studio_legacy_data_dir
+
+- name: Set trading-studio backup source
+  # 移行前は旧配置のデータを持ち出す
+  ansible.builtin.set_fact:
+    trading_studio_backup_src: "{{ (trading_studio_dir if trading_studio_data_dir.stat.exists else trading_studio_legacy_dir) ~ '/data' }}"
 
 - name: Create local backup directory for trading-studio data
   ansible.builtin.file:
     path: "{{ playbook_dir }}/backup/trading-studio/data_{{ backup_timestamp }}"
     state: directory
   delegate_to: localhost
-  when: trading_studio_data_dir.stat.exists
+  when: trading_studio_data_dir.stat.exists or trading_studio_legacy_data_dir.stat.exists
 
 - name: Backup trading-studio data directory from remote to local
   ansible.posix.synchronize:
-    src: "{{ src_dir }}/trading-studio/data/"
+    src: "{{ trading_studio_backup_src }}/"
     dest: "{{ playbook_dir }}/backup/trading-studio/data_{{ backup_timestamp }}/"
     mode: pull
-  when: trading_studio_data_dir.stat.exists
+  when: trading_studio_data_dir.stat.exists or trading_studio_legacy_data_dir.stat.exists
 
-- name: Clone trading-studio
-  ansible.builtin.git:
-    repo: "https://github.com/canpok1/trading-studio.git"
-    dest: "{{ src_dir }}/trading-studio"
-    version: main
-    force: yes
+- name: Check if legacy trading-studio compose file exists
+  ansible.builtin.stat:
+    path: "{{ trading_studio_legacy_dir }}/docker-compose.yml"
+  register: trading_studio_legacy_compose
+
+- name: Stop legacy trading-studio compose project
+  # 旧配置のコンテナが 127.0.0.1:3000 を使ったままだと新しいコンテナが起動できない。
+  # SQLite を書き込み中にコピーしないよう、データを移す前に止める
+  community.docker.docker_compose_v2:
+    project_src: "{{ trading_studio_legacy_dir }}"
+    state: absent
+  when: trading_studio_legacy_compose.stat.exists
+
+- name: Make trading-studio directory if it doesn't exist
+  ansible.builtin.file:
+    path: "{{ trading_studio_dir }}"
+    state: directory
+    mode: '0755'
 
 - name: Create data directory for trading-studio with container's fixed UID/GID
   # コンテナは1000:1000固定で動く。bind mount先の所有者が異なるとコンテナ内から書き込めずSQLiteが開けない。
   ansible.builtin.file:
-    path: "{{ src_dir }}/trading-studio/data"
+    path: "{{ trading_studio_dir }}/data"
     state: directory
     owner: '1000'
     group: '1000'
     mode: '0755'
   become: yes
 
-- name: Place .env file for trading-studio
-  # 後のフェーズでAPIキーを置く（DBファイルと一緒に持ち出されないよう、DBには入れない）
-  ansible.builtin.template:
-    src: trading-studio.env.j2
-    dest: "{{ src_dir }}/trading-studio/.env"
-    mode: '0600'
+- name: Check if trading-studio data directory is empty
+  ansible.builtin.find:
+    paths: "{{ trading_studio_dir }}/data"
+    file_type: any
+    hidden: yes
+  register: trading_studio_data_files
+  become: yes
 
-- name: Run Docker Compose up for trading-studio
-  community.docker.docker_compose_v2:
-    project_src: "{{ src_dir }}/trading-studio"
-    state: present
+- name: Copy legacy trading-studio data to new directory
+  # 新しい配置にデータが無いときだけ移す。旧配置は確認後に手で消す
+  ansible.builtin.command: cp -a {{ trading_studio_legacy_dir }}/data/. {{ trading_studio_dir }}/data/
+  become: yes
+  when:
+    - trading_studio_legacy_data_dir.stat.exists
+    - trading_studio_data_files.matched == 0

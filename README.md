@@ -55,7 +55,7 @@ trading-studio は mini-pc の `127.0.0.1:3000` にだけ公開し、Tailscale S
 
 ## サービスの配置
 
-新しい配置（ADR 0002・0004）に移したサービスは、`~/services/compose.yml` の1ファイルにまとめて定義しています。データと秘密情報はサービスごとに `~/services/<サービス名>/data/`・`secrets/` に置きます。今は Bifrost だけがこの配置で、他のサービスは順次移します。
+新しい配置（ADR 0002・0004）に移したサービスは、`~/services/compose.yml` の1ファイルにまとめて定義しています。データと秘密情報はサービスごとに `~/services/<サービス名>/data/`・`secrets/` に置きます。今は Bifrost と trading-studio がこの配置で、他のサービスは順次移します。
 
 ```bash
 cd ~/services

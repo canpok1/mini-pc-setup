@@ -25,6 +25,18 @@ services:
     networks:
       - ai
 
+  trading-studio:
+    image: ghcr.io/canpok1/trading-studio:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Tokyo
+    # mini-pc 自身にだけ公開し、Tailscale Serve で tailnet 内へ出す（trading-studio の ADR 0003・0004）
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./trading-studio/data:/app/data
+
 secrets:
   bifrost_encryption_key:
     file: ./bifrost/secrets/bifrost_encryption_key

@@ -21,6 +21,9 @@
   - name: Setup bifrost
     ansible.builtin.import_tasks: tasks/bifrost.yml
 
+  - name: Setup services
+    ansible.builtin.import_tasks: tasks/services.yml
+
   - name: Setup tailscale
     ansible.builtin.import_tasks: tasks/tailscale.yml
 

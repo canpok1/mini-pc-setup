@@ -41,7 +41,7 @@ trading-studio は mini-pc の `127.0.0.1:3000` にだけ公開し、Tailscale S
 
 ### Bifrost（AI ゲートウェイ）の初期設定
 
-アプリからの AI の呼び出しをまとめる [Bifrost](https://github.com/maximhq/bifrost) を `~/services/bifrost/` で動かします（ADR 0002・0003）。Gemini などの本物の API キーは Bifrost の管理画面にだけ登録し、アプリには Bifrost が発行する仮想キーを渡します。初回のみ次を行ってください。
+アプリからの AI の呼び出しをまとめる [Bifrost](https://github.com/maximhq/bifrost) を動かします（ADR 0002・0003）。Gemini などの本物の API キーは Bifrost の管理画面にだけ登録し、アプリには Bifrost が発行する仮想キーを渡します。初回のみ次を行ってください。
 
 1. `make edit-secrets` で次の2つを追加します。値は `openssl rand -base64 32` などで作ります。
    - `bifrost_encryption_key`: 登録した API キーを暗号化する鍵。**後から変えると登録済みのキーが読めなくなります。** 失くさないよう別に控えてください
@@ -52,6 +52,16 @@ trading-studio は mini-pc の `127.0.0.1:3000` にだけ公開し、Tailscale S
 5. Gemini などの API キーを登録し、アプリごとに仮想キーを発行します。
 
 アプリからは Docker ネットワーク `ai` に参加し、`http://bifrost:8080` を呼びます。Bifrost のバージョンは `tasks/bifrost.yml` の `bifrost_version` で固定しており、自動更新はしません。
+
+## サービスの配置
+
+新しい配置（ADR 0002・0004）に移したサービスは、`~/services/compose.yml` の1ファイルにまとめて定義しています。データと秘密情報はサービスごとに `~/services/<サービス名>/data/`・`secrets/` に置きます。今は Bifrost だけがこの配置で、他のサービスは順次移します。
+
+```bash
+cd ~/services
+docker compose ps                 # 全サービスの状態
+docker compose restart bifrost    # 1サービスだけ再起動
+```
 
 ## コンテナの自動更新
 

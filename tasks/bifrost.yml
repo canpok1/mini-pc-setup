@@ -66,18 +66,3 @@
     label: "{{ item.name }}"
   no_log: true
   become: yes
-
-- name: Create docker network for AI gateway
-  community.docker.docker_network:
-    name: ai
-
-- name: Copy bifrost compose.yml
-  ansible.builtin.template:
-    src: templates/bifrost/compose.yml.j2
-    dest: "{{ bifrost_dir }}/compose.yml"
-    mode: '0644'
-
-- name: Run Docker Compose up for bifrost
-  community.docker.docker_compose_v2:
-    project_src: "{{ bifrost_dir }}"
-    state: present

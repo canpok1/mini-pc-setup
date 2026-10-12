@@ -1,0 +1,39 @@
+# 全サービスを ~/services/compose.yml の1プロジェクトとして起動する（ADR 0004）。
+# 各サービスのディレクトリ・秘密情報は、このタスクより前にサービスごとのタスクで用意しておく
+- name: Set services variables
+  ansible.builtin.set_fact:
+    services_dir: "{{ ansible_facts['env']['HOME'] }}/services"
+
+- name: Create docker network for AI gateway
+  # compose の外で作り、docker compose down でも消えないようにする
+  community.docker.docker_network:
+    name: ai
+
+- name: Check if legacy per-service compose for bifrost exists
+  # ADR 0002 の当初の形（サービスごとの compose）で動いているものを止めてから移す
+  ansible.builtin.stat:
+    path: "{{ services_dir }}/bifrost/compose.yml"
+  register: legacy_bifrost_compose
+
+- name: Stop legacy bifrost compose project
+  community.docker.docker_compose_v2:
+    project_src: "{{ services_dir }}/bifrost"
+    state: absent
+  when: legacy_bifrost_compose.stat.exists
+
+- name: Remove legacy bifrost compose.yml
+  ansible.builtin.file:
+    path: "{{ services_dir }}/bifrost/compose.yml"
+    state: absent
+
+- name: Copy services compose.yml
+  ansible.builtin.template:
+    src: templates/services/compose.yml.j2
+    dest: "{{ services_dir }}/compose.yml"
+    mode: '0644'
+
+- name: Run Docker Compose up for services
+  community.docker.docker_compose_v2:
+    project_src: "{{ services_dir }}"
+    state: present
+    remove_orphans: true

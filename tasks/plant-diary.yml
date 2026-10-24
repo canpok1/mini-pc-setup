@@ -1,26 +1,38 @@
 - name: Set plant-diary variables
   ansible.builtin.set_fact:
-    src_dir: "{{ ansible_facts['env']['HOME'] }}/src"
+    plant_diary_dir: "{{ ansible_facts['env']['HOME'] }}/services/plant-diary"
+    # ADR 0004 以前の配置。撮影スクリプト（cron）はこの clone の中にあるため、移行後も clone は残す
+    plant_diary_legacy_dir: "{{ ansible_facts['env']['HOME'] }}/src/plant-diary"
     backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
 
 - name: Check if plant-diary data directory exists on remote
   ansible.builtin.stat:
-    path: "{{ src_dir }}/plant-diary/data"
+    path: "{{ plant_diary_dir }}/data"
   register: plant_diary_data_dir
+
+- name: Check if legacy plant-diary data directory exists on remote
+  ansible.builtin.stat:
+    path: "{{ plant_diary_legacy_dir }}/data"
+  register: plant_diary_legacy_data_dir
+
+- name: Set plant-diary backup source
+  # 移行前は旧配置のデータを持ち出す
+  ansible.builtin.set_fact:
+    plant_diary_backup_src: "{{ (plant_diary_dir if plant_diary_data_dir.stat.exists else plant_diary_legacy_dir) ~ '/data' }}"
 
 - name: Create local backup directory for plant-diary data
   ansible.builtin.file:
     path: "{{ playbook_dir }}/backup/plant-diary/data_{{ backup_timestamp }}"
     state: directory
   delegate_to: localhost
-  when: plant_diary_data_dir.stat.exists
+  when: plant_diary_data_dir.stat.exists or plant_diary_legacy_data_dir.stat.exists
 
 - name: Backup plant-diary data directory from remote to local
   ansible.posix.synchronize:
-    src: "{{ src_dir }}/plant-diary/data/"
+    src: "{{ plant_diary_backup_src }}/"
     dest: "{{ playbook_dir }}/backup/plant-diary/data_{{ backup_timestamp }}/"
     mode: pull
-  when: plant_diary_data_dir.stat.exists
+  when: plant_diary_data_dir.stat.exists or plant_diary_legacy_data_dir.stat.exists
 
 - name: Install required packages for plant-diary
   ansible.builtin.apt:
@@ -31,31 +43,78 @@
   become: yes
 
 - name: Clone plant-diary
+  # コンテナはここの compose では動かさない。撮影スクリプトを使うためだけに clone する
   ansible.builtin.git:
     repo: "https://github.com/canpok1/plant-diary.git"
-    dest: "{{ src_dir }}/plant-diary"
+    dest: "{{ plant_diary_legacy_dir }}"
     version: main
     force: yes
 
-- name: check .env file exists
+- name: Check if legacy plant-diary .env exists
+  # 旧配置で動かしていた環境にだけある。旧 compose は env_file に .env を指定しており、無いと停止もできない
   ansible.builtin.stat:
-    path: "{{ src_dir }}/plant-diary/.env"
-  register: env_file
+    path: "{{ plant_diary_legacy_dir }}/.env"
+  register: plant_diary_legacy_env
 
-- name: Create .env file for plant-diary
+- name: Stop legacy plant-diary compose project
+  # 旧配置のコンテナは 8080 を全インターフェースへ公開していた。止めないと新しいコンテナが 8080 を使えない。
+  # SQLite を書き込み中にコピーしないよう、データを移す前に止める。止まっていれば何もしない
+  community.docker.docker_compose_v2:
+    project_src: "{{ plant_diary_legacy_dir }}"
+    state: absent
+  when: plant_diary_legacy_env.stat.exists
+
+- name: Make plant-diary directory if it doesn't exist
+  ansible.builtin.file:
+    path: "{{ plant_diary_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create data directory for plant-diary with container's fixed UID/GID
+  # イメージの appuser は UID 1000。bind mount 先の所有者が異なるとコンテナ内から書き込めず SQLite が開けない
+  ansible.builtin.file:
+    path: "{{ plant_diary_dir }}/data"
+    state: directory
+    owner: '1000'
+    group: '1000'
+    mode: '0755'
+  become: yes
+
+- name: Check if plant-diary data directory is empty
+  ansible.builtin.find:
+    paths: "{{ plant_diary_dir }}/data"
+    file_type: any
+    hidden: yes
+  register: plant_diary_data_files
+  become: yes
+
+- name: Copy legacy plant-diary data to new directory
+  # 新しい配置にデータが無いときだけ移す。旧配置の DB は確認後に手で消す
+  ansible.builtin.command: cp -a {{ plant_diary_legacy_dir }}/data/. {{ plant_diary_dir }}/data/
+  become: yes
+  when:
+    - plant_diary_legacy_data_dir.stat.exists
+    - plant_diary_data_files.matched == 0
+
+- name: Create secrets directory for plant-diary
+  ansible.builtin.file:
+    path: "{{ plant_diary_dir }}/secrets"
+    state: directory
+    owner: '1000'
+    group: '1000'
+    mode: '0700'
+  become: yes
+
+- name: Place secrets for plant-diary
+  # compose の secrets はファイルをそのまま bind mount するため、コンテナの UID 1000 が読める所有者にする
   ansible.builtin.copy:
-    src: "{{ src_dir }}/plant-diary/.env.example"
-    dest: "{{ src_dir }}/plant-diary/.env"
-    remote_src: yes
-    force: no
-  when: not env_file.stat.exists
-
-- name: Replace placeholders in .env file
-  ansible.builtin.replace:
-    path: "{{ src_dir }}/plant-diary/.env"
-    regexp: 'your_api_key_here'
-    replace: "{{ gemini_api_key }}"
-  when: not env_file.stat.exists
+    content: "{{ gemini_api_key }}"
+    dest: "{{ plant_diary_dir }}/secrets/gemini_api_key"
+    owner: '1000'
+    group: '1000'
+    mode: '0400'
+  no_log: true
+  become: yes
 
 - name: Login to GHCR
   community.docker.docker_login:
@@ -63,18 +122,14 @@
     username: "USERNAME"
     password: "{{ lookup('env', 'GH_TOKEN') }}"
 
-- name: Run Docker Compose up for plant-diary
-  community.docker.docker_compose_v2:
-    project_src: "{{ src_dir }}/plant-diary"
-    state: present
-
 - name: Add execute permission to capture_auto.sh
   ansible.builtin.file:
-    path: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh"
+    path: "{{ plant_diary_legacy_dir }}/scripts/capture_auto.sh"
     mode: '0755'
 
 - name: Add cron job to run capture_auto.sh
+  # コンテナは 127.0.0.1:8080 にだけ公開しているため、mini-pc 上の cron からは localhost で届く
   ansible.builtin.cron:
     name: "Run capture script"
-    job: "{{ src_dir }}/plant-diary/scripts/capture_auto.sh --api-url http://localhost:8080 --script-key {{ script_key }}"
+    job: "{{ plant_diary_legacy_dir }}/scripts/capture_auto.sh --api-url http://localhost:8080 --script-key {{ script_key }}"
     minute: "*/5"

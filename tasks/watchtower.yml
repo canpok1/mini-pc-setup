@@ -7,9 +7,9 @@
     # <project>-<service>-1 になる想定（Compose v2のデフォルト命名規則）。実機のdocker psで要確認。
     # ~/services/compose.yml へ移したものはプロジェクト名が services になる（ADR 0004）
     watchtower_target_containers:
-      - plant-diary-plant-diary-1
       - health-connect-converter-health-connect-converter-1
       - services-trading-studio-1
+      - services-plant-diary-1
 
 - name: Make watchtower setup directory if it doesn't exist
   ansible.builtin.file:

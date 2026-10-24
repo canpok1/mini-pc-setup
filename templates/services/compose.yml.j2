@@ -41,11 +41,35 @@ services:
       - default
       - ai
 
+  plant-diary:
+    image: ghcr.io/canpok1/plant-diary/server:latest
+    pull_policy: always
+    restart: unless-stopped
+    # Gemini の API キーは環境変数でしか受け取らないため、ファイルから読んで環境変数へ入れてから起動する。
+    # docker inspect に API キーを出さないため（Bifrost と同じ）
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        GEMINI_API_KEY="$$(cat /run/secrets/gemini_api_key)"
+        export GEMINI_API_KEY
+        exec ./plant-diary
+    # mini-pc 自身にだけ公開し、Tailscale Serve で tailnet 内へ出す。撮影の cron は localhost で呼ぶ。
+    # アカウント作成 API に認証が無いため、LAN やインターネットへは直接出さない
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./plant-diary/data:/app/data
+    secrets:
+      - gemini_api_key
+
 secrets:
   bifrost_encryption_key:
     file: ./bifrost/secrets/bifrost_encryption_key
   bifrost_setup_token:
     file: ./bifrost/secrets/bifrost_setup_token
+  gemini_api_key:
+    file: ./plant-diary/secrets/gemini_api_key
 
 networks:
   ai:

@@ -4,27 +4,6 @@
     # 自作アプリではないため watchtower の対象にせず、バージョンを固定して手で上げる（ADR 0003）
     bifrost_version: v2.2.6
     bifrost_admin_port: 18080
-    backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
-
-- name: Check if bifrost data directory exists on remote
-  ansible.builtin.stat:
-    path: "{{ bifrost_dir }}/data"
-  register: bifrost_data_dir
-
-- name: Create local backup directory for bifrost data
-  ansible.builtin.file:
-    path: "{{ playbook_dir }}/backup/bifrost/data_{{ backup_timestamp }}"
-    state: directory
-  delegate_to: localhost
-  when: bifrost_data_dir.stat.exists
-
-- name: Backup bifrost data directory from remote to local
-  # 登録した API キーは BIFROST_ENCRYPTION_KEY で暗号化されて data/ に入る。暗号化キーは secrets/ にあり、ここには含めない
-  ansible.posix.synchronize:
-    src: "{{ bifrost_dir }}/data/"
-    dest: "{{ playbook_dir }}/backup/bifrost/data_{{ backup_timestamp }}/"
-    mode: pull
-  when: bifrost_data_dir.stat.exists
 
 - name: Make bifrost directory if it doesn't exist
   ansible.builtin.file:

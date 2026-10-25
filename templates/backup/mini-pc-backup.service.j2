@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up service data to the NAS with restic
+RequiresMountsFor={{ backup_mount_point }}
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mini-pc-backup
+# サービスの応答を落とさないよう、CPU と I/O の優先度を下げる
+Nice=10
+IOSchedulingClass=idle

@@ -3,36 +3,11 @@
     plant_diary_dir: "{{ ansible_facts['env']['HOME'] }}/services/plant-diary"
     # ADR 0004 以前の配置。撮影スクリプト（cron）はこの clone の中にあるため、移行後も clone は残す
     plant_diary_legacy_dir: "{{ ansible_facts['env']['HOME'] }}/src/plant-diary"
-    backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
-
-- name: Check if plant-diary data directory exists on remote
-  ansible.builtin.stat:
-    path: "{{ plant_diary_dir }}/data"
-  register: plant_diary_data_dir
 
 - name: Check if legacy plant-diary data directory exists on remote
   ansible.builtin.stat:
     path: "{{ plant_diary_legacy_dir }}/data"
   register: plant_diary_legacy_data_dir
-
-- name: Set plant-diary backup source
-  # 移行前は旧配置のデータを持ち出す
-  ansible.builtin.set_fact:
-    plant_diary_backup_src: "{{ (plant_diary_dir if plant_diary_data_dir.stat.exists else plant_diary_legacy_dir) ~ '/data' }}"
-
-- name: Create local backup directory for plant-diary data
-  ansible.builtin.file:
-    path: "{{ playbook_dir }}/backup/plant-diary/data_{{ backup_timestamp }}"
-    state: directory
-  delegate_to: localhost
-  when: plant_diary_data_dir.stat.exists or plant_diary_legacy_data_dir.stat.exists
-
-- name: Backup plant-diary data directory from remote to local
-  ansible.posix.synchronize:
-    src: "{{ plant_diary_backup_src }}/"
-    dest: "{{ playbook_dir }}/backup/plant-diary/data_{{ backup_timestamp }}/"
-    mode: pull
-  when: plant_diary_data_dir.stat.exists or plant_diary_legacy_data_dir.stat.exists
 
 - name: Install required packages for plant-diary
   ansible.builtin.apt:

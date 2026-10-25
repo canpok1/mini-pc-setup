@@ -8,3 +8,4 @@
 | [0002](0002-consolidate-service-layout-under-services-dir.md) | サービスの compose・データ・秘密情報を mini-pc-setup で ~/services/ 配下に集約する | 一部置換 | 2026-10-12 |
 | [0003](0003-adopt-bifrost-as-ai-gateway.md) | AI の呼び出しを Bifrost に集約する | 採用 | 2026-10-12 |
 | [0004](0004-single-compose-file-for-all-services.md) | サーバーで動かす全サービスを1つの compose ファイルにまとめる | 採用 | 2026-10-12 |
+| [0005](0005-back-up-service-data-to-nas-with-restic.md) | サービスのデータを restic で NAS へ毎日バックアップする | 採用 | 2026-10-25 |

@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily backup of service data to the NAS
+
+[Timer]
+OnCalendar=*-*-* {{ backup_time }}
+# 実行時刻に電源が落ちていたら、起動後に取り戻す
+Persistent=true
+
+[Install]
+WantedBy=timers.target

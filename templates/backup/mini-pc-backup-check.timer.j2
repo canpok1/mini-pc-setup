@@ -1,0 +1,9 @@
+[Unit]
+Description=Weekly verification of the restic repository on the NAS
+
+[Timer]
+OnCalendar={{ backup_check_time }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

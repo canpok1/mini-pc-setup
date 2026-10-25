@@ -6,6 +6,9 @@
     - vars/secrets.yml
 
   tasks:
+  - name: Back up service data to NAS
+    ansible.builtin.import_tasks: tasks/backup.yml
+
   - name: Setup cloudflared
     ansible.builtin.import_tasks: tasks/cloudflared.yml
 

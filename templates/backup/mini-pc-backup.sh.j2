@@ -1,0 +1,50 @@
+#!/bin/bash
+# 各サービスの data/ を NAS 上の restic リポジトリへバックアップする（ADR 0005）。
+# mini-pc-setup の tasks/backup.yml が置く。ここを直接編集しない
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source /etc/mini-pc-backup/restic.env
+export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE RESTIC_CACHE_DIR
+
+TARGETS=(
+{% for dir in backup_targets %}
+  "{{ dir }}"
+{% endfor %}
+)
+# SQLite の一貫したコピーを置く場所。元の DB ファイルの代わりにこちらを restic へ渡す
+STAGING=/var/lib/mini-pc-backup/sqlite
+EXCLUDE_FILE=/var/lib/mini-pc-backup/exclude.txt
+
+rm -rf "$STAGING"
+mkdir -p "$STAGING"
+: > "$EXCLUDE_FILE"
+
+existing=()
+for dir in "${TARGETS[@]}"; do
+  [ -d "$dir" ] && existing+=("$dir")
+done
+if [ -z "${existing[*]-}" ]; then
+  echo "バックアップ対象のディレクトリが1つも無い" >&2
+  exit 1
+fi
+
+# 書き込み中の DB をファイルとしてコピーすると壊れたコピーになりうるため、
+# SQLite のオンラインバックアップで複製する。ファイル名ではなく先頭のマジックで見分ける
+while IFS= read -r -d '' f; do
+  [ "$(head -c 15 "$f")" = "SQLite format 3" ] || continue
+  dest="$STAGING$f"
+  uid=$(stat -c %u "$f")
+  gid=$(stat -c %g "$f")
+  mkdir -p "$(dirname "$dest")"
+  chown "$uid:$gid" "$(dirname "$dest")"
+  # root で開くと -wal/-shm が root 所有で作られ、コンテナから開けなくなることがあるため、DB の所有者として開く
+  setpriv --reuid="$uid" --regid="$gid" --clear-groups sqlite3 "$f" ".backup '$dest'"
+  printf '%s\n' "$f" "$f-wal" "$f-shm" "$f-journal" >> "$EXCLUDE_FILE"
+done < <(find "${existing[@]}" -type f -size +0 -print0)
+
+restic backup --exclude-file "$EXCLUDE_FILE" "${existing[@]}" "$STAGING"
+restic forget --prune \
+  --keep-daily {{ backup_keep_daily }} \
+  --keep-weekly {{ backup_keep_weekly }} \
+  --keep-monthly {{ backup_keep_monthly }}

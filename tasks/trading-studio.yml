@@ -3,36 +3,11 @@
     trading_studio_dir: "{{ ansible_facts['env']['HOME'] }}/services/trading-studio"
     # ADR 0004 以前の配置。アプリのリポジトリを clone し、その中の compose で動かしていた
     trading_studio_legacy_dir: "{{ ansible_facts['env']['HOME'] }}/src/trading-studio"
-    backup_timestamp: "{{ now().strftime('%Y%m%d%H%M%S') }}"
-
-- name: Check if trading-studio data directory exists on remote
-  ansible.builtin.stat:
-    path: "{{ trading_studio_dir }}/data"
-  register: trading_studio_data_dir
 
 - name: Check if legacy trading-studio data directory exists on remote
   ansible.builtin.stat:
     path: "{{ trading_studio_legacy_dir }}/data"
   register: trading_studio_legacy_data_dir
-
-- name: Set trading-studio backup source
-  # 移行前は旧配置のデータを持ち出す
-  ansible.builtin.set_fact:
-    trading_studio_backup_src: "{{ (trading_studio_dir if trading_studio_data_dir.stat.exists else trading_studio_legacy_dir) ~ '/data' }}"
-
-- name: Create local backup directory for trading-studio data
-  ansible.builtin.file:
-    path: "{{ playbook_dir }}/backup/trading-studio/data_{{ backup_timestamp }}"
-    state: directory
-  delegate_to: localhost
-  when: trading_studio_data_dir.stat.exists or trading_studio_legacy_data_dir.stat.exists
-
-- name: Backup trading-studio data directory from remote to local
-  ansible.posix.synchronize:
-    src: "{{ trading_studio_backup_src }}/"
-    dest: "{{ playbook_dir }}/backup/trading-studio/data_{{ backup_timestamp }}/"
-    mode: pull
-  when: trading_studio_data_dir.stat.exists or trading_studio_legacy_data_dir.stat.exists
 
 - name: Check if legacy trading-studio compose file exists
   ansible.builtin.stat:

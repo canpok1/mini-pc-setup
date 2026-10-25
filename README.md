@@ -47,6 +47,19 @@ plant-diary も trading-studio と同じく mini-pc の `127.0.0.1:8080` にだ�
 
 撮影スクリプト（cron）は `~/src/plant-diary` の clone の中にあるため、この clone は消さないでください。移行前の DB（`~/src/plant-diary/data/plant_log.db`）は、新しい配置で日記が見えることを確かめてから手で消して構いません。Gemini の API キーは `vars/secrets.yml` の `gemini_api_key` から渡します（旧配置の `~/src/plant-diary/.env` はもう読みません）。
 
+### NAS へのバックアップの準備
+
+各サービスの `data/` は、自宅 LAN の NAS（Buffalo LS210D、`192.168.2.100`）へ restic で毎日 3:30 にバックアップします（ADR 0005）。`make deploy` も最初に1回バックアップを取り、失敗したらデプロイを止めます。初回のみ次を行ってください。
+
+1. NAS の管理画面で次を行います。
+   - ファームウェアを更新し、SMB 2.0 を使えるようにする（LS210D は SMB 3.0 に対応していません）
+   - 共有フォルダー `mini-pc-backup` と、そこにだけ書き込めるユーザーを作る
+2. `make edit-secrets` で次の3つを追加します。
+   - `backup_nas_username` / `backup_nas_password`: 1 で作ったユーザー
+   - `restic_password`: バックアップを暗号化するパスワード。`openssl rand -base64 32` などで作ります。**失くすと全世代が読めなくなります。** 別にも控えてください
+
+NAS の IP や共有名、世代数は `tasks/backup.yml` の変数で変えられます。
+
 ### Bifrost（AI ゲートウェイ）の初期設定
 
 アプリからの AI の呼び出しをまとめる [Bifrost](https://github.com/maximhq/bifrost) を動かします（ADR 0002・0003）。Gemini などの本物の API キーは Bifrost の管理画面にだけ登録し、アプリには Bifrost が発行する仮想キーを渡します。初回のみ次を行ってください。
@@ -70,6 +83,27 @@ cd ~/services
 docker compose ps                 # 全サービスの状態
 docker compose restart bifrost    # 1サービスだけ再起動
 ```
+
+## バックアップと復元
+
+mini-pc 上で root として操作します。
+
+```bash
+sudo systemctl status mini-pc-backup     # 前回の結果
+sudo journalctl -u mini-pc-backup        # ログ
+sudo systemctl start mini-pc-backup      # 今すぐ取る
+sudo bash -c 'set -a; . /etc/mini-pc-backup/restic.env; restic snapshots'   # 世代の一覧
+```
+
+世代は日次7・週次4・月次12を残します。同じ日に複数回取った場合は、その日の最後の1つが残ります。
+
+復元は、取り出したい場所へ restore してから手でコピーします。SQLite の DB は元の場所ではなく `/var/lib/mini-pc-backup/sqlite/` の下に、元の絶対パスのまま入っています（動作中の DB を安全に複製したもの）。コピーする前に対象のサービスを止めてください。
+
+```bash
+sudo bash -c 'set -a; . /etc/mini-pc-backup/restic.env; restic restore latest --target /tmp/restore'
+```
+
+以前の `make deploy` が手元の `backup/` に残したコピーは、NAS へのバックアップと復元を確かめた後で手で消して構いません。
 
 ## コンテナの自動更新
 

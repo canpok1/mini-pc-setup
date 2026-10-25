@@ -1,0 +1,11 @@
+[Unit]
+Description=Verify the restic repository on the NAS
+RequiresMountsFor={{ backup_mount_point }}
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/mini-pc-backup/restic.env
+# 毎回全データを読むと時間がかかるため、一部だけ読んで壊れていないか確かめる
+ExecStart=/usr/bin/restic check --read-data-subset={{ backup_check_subset }}
+Nice=10
+IOSchedulingClass=idle

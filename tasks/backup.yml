@@ -1,0 +1,150 @@
+# 各サービスの data/ を自宅 LAN の NAS へ restic でバックアップする（ADR 0005）。
+# 毎日 systemd タイマーで動かすほか、デプロイで何か変える前にここで1回実行する
+- name: Set backup variables
+  ansible.builtin.set_fact:
+    backup_nas_host: 192.168.2.100
+    backup_nas_share: mini-pc-backup
+    # LS210D は SMB 3.0 に対応していない。2.0 もファームウェア更新が必要
+    backup_smb_version: "2.0"
+    backup_mount_point: /mnt/nas-backup
+    backup_restic_repository: /mnt/nas-backup/restic
+    backup_time: "03:30:00"
+    backup_keep_daily: 7
+    backup_keep_weekly: 4
+    backup_keep_monthly: 12
+    backup_check_time: "Sun *-*-* 04:30:00"
+    backup_check_subset: 5%
+    backup_targets:
+      - "{{ ansible_facts['env']['HOME'] }}/services/plant-diary/data"
+      - "{{ ansible_facts['env']['HOME'] }}/services/trading-studio/data"
+      - "{{ ansible_facts['env']['HOME'] }}/services/bifrost/data"
+      - "{{ ansible_facts['env']['HOME'] }}/src/health-connect-converter/data"
+      # 撮影スクリプトの作業ファイルと、新しい配置へ移す前の plant-diary の DB がある
+      - "{{ ansible_facts['env']['HOME'] }}/src/plant-diary/data"
+
+- name: Install packages for backup
+  ansible.builtin.apt:
+    name:
+      - restic
+      - sqlite3
+      - cifs-utils
+    state: present
+  become: yes
+
+- name: Create backup config directory
+  ansible.builtin.file:
+    path: /etc/mini-pc-backup
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  become: yes
+
+- name: Place NAS credentials for backup
+  ansible.builtin.copy:
+    content: |
+      username={{ backup_nas_username }}
+      password={{ backup_nas_password }}
+    dest: /etc/mini-pc-backup/smb-credentials
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+  become: yes
+
+- name: Place restic password
+  # 失くすと全世代が読めなくなる。正本は vars/secrets.yml
+  ansible.builtin.copy:
+    content: "{{ restic_password }}"
+    dest: /etc/mini-pc-backup/restic-password
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+  become: yes
+
+- name: Place restic environment
+  ansible.builtin.template:
+    src: templates/backup/restic.env.j2
+    dest: /etc/mini-pc-backup/restic.env
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+
+- name: Mount NAS share for backup
+  # automount にしておき、NAS が落ちていても mini-pc の起動は止めない
+  ansible.posix.mount:
+    src: "//{{ backup_nas_host }}/{{ backup_nas_share }}"
+    path: "{{ backup_mount_point }}"
+    fstype: cifs
+    opts: "credentials=/etc/mini-pc-backup/smb-credentials,vers={{ backup_smb_version }},uid=0,gid=0,file_mode=0600,dir_mode=0700,_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=600"
+    state: mounted
+  become: yes
+
+- name: Reload systemd to pick up the automount from fstab
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: yes
+
+- name: Initialize restic repository
+  ansible.builtin.command: restic init
+  args:
+    creates: "{{ backup_restic_repository }}/config"
+  environment:
+    RESTIC_REPOSITORY: "{{ backup_restic_repository }}"
+    RESTIC_PASSWORD_FILE: /etc/mini-pc-backup/restic-password
+  become: yes
+
+- name: Create backup work directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /var/lib/mini-pc-backup
+    - /var/cache/restic
+  become: yes
+
+- name: Place backup script
+  ansible.builtin.template:
+    src: templates/backup/mini-pc-backup.sh.j2
+    dest: /usr/local/sbin/mini-pc-backup
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Place systemd units for backup
+  ansible.builtin.template:
+    src: "templates/backup/{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - mini-pc-backup.service
+    - mini-pc-backup.timer
+    - mini-pc-backup-check.service
+    - mini-pc-backup-check.timer
+  become: yes
+
+- name: Enable backup timers
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - mini-pc-backup.timer
+    - mini-pc-backup-check.timer
+  become: yes
+
+- name: Back up before deploying changes
+  # oneshot のサービスは終わるまで戻らない。失敗したらここでデプロイを止める
+  ansible.builtin.systemd_service:
+    name: mini-pc-backup.service
+    state: started
+  become: yes

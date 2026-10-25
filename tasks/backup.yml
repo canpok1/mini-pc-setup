@@ -8,11 +8,12 @@
     backup_smb_version: "2.0"
     backup_mount_point: /mnt/nas-backup
     backup_restic_repository: /mnt/nas-backup/restic
-    backup_time: "03:30:00"
+    # mini-pc の時計は UTC のため、タイムゾーンを明示する
+    backup_time: "03:30:00 Asia/Tokyo"
     backup_keep_daily: 7
     backup_keep_weekly: 4
     backup_keep_monthly: 12
-    backup_check_time: "Sun *-*-* 04:30:00"
+    backup_check_time: "Sun *-*-* 04:30:00 Asia/Tokyo"
     backup_check_subset: 5%
     backup_targets:
       - "{{ ansible_facts['env']['HOME'] }}/services/plant-diary/data"

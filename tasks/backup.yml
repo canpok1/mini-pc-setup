@@ -72,19 +72,44 @@
     mode: '0600'
   become: yes
 
-- name: Mount NAS share for backup
-  # automount にしておき、NAS が落ちていても mini-pc の起動は止めない
+- name: Register NAS share for backup in fstab
+  # automount にしておき、使うときだけマウントして10分使わなければ外す。NAS が落ちていても mini-pc の起動は止めない
   ansible.posix.mount:
     src: "//{{ backup_nas_host }}/{{ backup_nas_share }}"
     path: "{{ backup_mount_point }}"
     fstype: cifs
     opts: "credentials=/etc/mini-pc-backup/smb-credentials,vers={{ backup_smb_version }},uid=0,gid=0,file_mode=0600,dir_mode=0700,_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=600"
-    state: mounted
+    state: present
   become: yes
 
 - name: Reload systemd to pick up the automount from fstab
   ansible.builtin.systemd_service:
     daemon_reload: true
+  become: yes
+
+- name: Get automount unit name for NAS share
+  ansible.builtin.command: systemd-escape --path --suffix=automount {{ backup_mount_point }}
+  register: backup_automount_unit
+  changed_when: false
+
+- name: Check if automount for NAS share is active
+  ansible.builtin.command: systemctl is-active {{ backup_automount_unit.stdout }}
+  register: backup_automount_state
+  changed_when: false
+  failed_when: false
+
+- name: Unmount NAS share mounted without automount
+  # 以前の版はデプロイ中に直接マウントしていた。付いたままだと automount を始められず、再起動まで外れない
+  ansible.posix.mount:
+    path: "{{ backup_mount_point }}"
+    state: unmounted
+  become: yes
+  when: backup_automount_state.stdout != 'active'
+
+- name: Start automount for NAS share
+  ansible.builtin.systemd_service:
+    name: "{{ backup_automount_unit.stdout }}"
+    state: started
   become: yes
 
 - name: Initialize restic repository

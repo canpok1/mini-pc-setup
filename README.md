@@ -52,7 +52,7 @@ plant-diary も trading-studio と同じく mini-pc の `127.0.0.1:8080` にだ�
 各サービスの `data/` は、自宅 LAN の NAS（Buffalo LS210D、`192.168.2.100`）へ restic で毎日 3:30 にバックアップします（ADR 0005）。`make deploy` も最初に1回バックアップを取り、失敗したらデプロイを止めます。初回のみ次を行ってください。
 
 1. NAS の管理画面で次を行います。
-   - ファームウェアを更新し、SMB 2.0 を使えるようにする（LS210D は SMB 3.0 に対応していません）
+   - ファームウェアを更新し、ファイル共有の設定で SMB2 を有効にする（LS210D は SMB 3.0 に対応していません。SMB2 が無効のままだとマウントで「Server abruptly closed the connection」になります）
    - 共有フォルダー `mini-pc-backup` と、そこにだけ書き込めるユーザーを作る
 2. `make edit-secrets` で次の3つを追加します。
    - `backup_nas_username` / `backup_nas_password`: 1 で作ったユーザー

@@ -9,3 +9,6 @@ EnvironmentFile=/etc/mini-pc-backup/restic.env
 ExecStart=/usr/bin/restic check --read-data-subset={{ backup_check_subset }}
 Nice=10
 IOSchedulingClass=idle
+# automount の idle-timeout だけでは外れないことがあったため、終わったら外す。
+# 他方のサービスが使用中なら外せないが、そのときは失敗を無視する
+ExecStopPost=-/usr/bin/umount {{ backup_mount_point }}

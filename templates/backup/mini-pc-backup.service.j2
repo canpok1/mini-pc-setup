@@ -8,3 +8,6 @@ ExecStart=/usr/local/sbin/mini-pc-backup
 # サービスの応答を落とさないよう、CPU と I/O の優先度を下げる
 Nice=10
 IOSchedulingClass=idle
+# automount の idle-timeout だけでは外れないことがあったため、終わったら外す。
+# 他方のサービスが使用中なら外せないが、そのときは失敗を無視する
+ExecStopPost=-/usr/bin/umount {{ backup_mount_point }}

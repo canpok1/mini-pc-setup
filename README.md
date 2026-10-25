@@ -39,6 +39,14 @@ trading-studio は mini-pc の `127.0.0.1:3000` にだけ公開し、Tailscale S
 
 **trading-studio は cloudflared 経由で公開しないでください。** インターネットに公開され、ログイン機能の無い画面から誰でも自動取引を操作できてしまいます。
 
+### plant-diary の開き方
+
+plant-diary も trading-studio と同じく mini-pc の `127.0.0.1:8080` にだけ公開し、Tailscale Serve で tailnet 内へ HTTPS で公開します。アカウント作成の API に認証が無いため、LAN やインターネットへは直接出しません。Tailscale に接続した端末で `https://<mini-pc のマシン名>.<tailnet 名>.ts.net:10000/` を開きます。
+
+**plant-diary も cloudflared 経由で公開しないでください。** 誰でもアカウントを作り、Gemini の API キーを使って日記を生成できてしまいます。
+
+撮影スクリプト（cron）は `~/src/plant-diary` の clone の中にあるため、この clone は消さないでください。移行前の DB（`~/src/plant-diary/data/plant_log.db`）は、新しい配置で日記が見えることを確かめてから手で消して構いません。Gemini の API キーは `vars/secrets.yml` の `gemini_api_key` から渡します（旧配置の `~/src/plant-diary/.env` はもう読みません）。
+
 ### Bifrost（AI ゲートウェイ）の初期設定
 
 アプリからの AI の呼び出しをまとめる [Bifrost](https://github.com/maximhq/bifrost) を動かします（ADR 0002・0003）。Gemini などの本物の API キーは Bifrost の管理画面にだけ登録し、アプリには Bifrost が発行する仮想キーを渡します。初回のみ次を行ってください。
@@ -55,7 +63,7 @@ trading-studio は mini-pc の `127.0.0.1:3000` にだけ公開し、Tailscale S
 
 ## サービスの配置
 
-新しい配置（ADR 0002・0004）に移したサービスは、`~/services/compose.yml` の1ファイルにまとめて定義しています。データと秘密情報はサービスごとに `~/services/<サービス名>/data/`・`secrets/` に置きます。今は Bifrost と trading-studio がこの配置で、他のサービスは順次移します。
+新しい配置（ADR 0002・0004）に移したサービスは、`~/services/compose.yml` の1ファイルにまとめて定義しています。データと秘密情報はサービスごとに `~/services/<サービス名>/data/`・`secrets/` に置きます。今は Bifrost・trading-studio・plant-diary がこの配置で、他のサービスは順次移します。
 
 ```bash
 cd ~/services

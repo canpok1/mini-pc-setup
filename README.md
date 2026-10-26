@@ -131,20 +131,21 @@ Host mini-pc
 make ping
 ```
 
-3. プレイブックを実行します。
+3. プレイブックを実行します。初回（クリーンインストール直後など、sudo にパスワードが要る状態）は `make bootstrap` で sudo のパスワードも入力します。一度通ると sudo がパスワード無しになるため（自動デプロイのため。後述）、2回目以降は `make deploy` で vault のパスワードだけを聞きます。
 
 ```bash
-make deploy
+make bootstrap   # 初回
+make deploy      # 2回目以降
 ```
 
 ### 自動デプロイ
 
 main の変更は mini-pc 自身が取り込みます（ADR 0007）。15分ごとに systemd タイマーが `ansible-pull`（リポジトリを自分で取得し、playbook を自分自身に適用する Ansible のコマンド）を動かし、main に新しいコミットがあったときだけ、`make deploy` と同じ処理（NAS へのバックアップ → playbook の適用）を行います。**PR のマージがそのままデプロイになります。** 壊れた変更を入れたら revert して main へ入れてください。
 
-仕組みを入れるのは `make deploy` です。初回のみ次を行ってください。
+仕組みを入れるのは手元からのプレイブック実行です。初回のみ次を行ってください。
 
 1. `make edit-secrets` で `deploy_vault_password` に、vault のパスワード（`make deploy` で入力しているもの）と同じ値を追加します。mini-pc の `/etc/mini-pc-deploy/vault-password`（root だけが読める）へ書き出され、自動デプロイが secrets.yml を開くのに使います
-2. `make deploy` を実行します。Ansible が mini-pc に入り、ログインユーザーの sudo がパスワード無しになります（自動実行ではパスワードを入力できないため）
+2. `make bootstrap` を実行します（sudo のパスワードを聞く版。この時点ではまだ sudo にパスワードが要るため）。ログインユーザーの sudo がパスワード無しになり（自動実行ではパスワードを入力できないため）、以降は `make deploy` で足ります
 
 vault のパスワードを変えたとき（`ansible-vault rekey`）は、`deploy_vault_password` も同じ値に変えてから手元で `make deploy` してください。古いままだと自動デプロイが secrets.yml を開けずに失敗し続けます。
 

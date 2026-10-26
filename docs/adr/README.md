@@ -9,3 +9,4 @@
 | [0003](0003-adopt-bifrost-as-ai-gateway.md) | AI の呼び出しを Bifrost に集約する | 採用 | 2026-10-12 |
 | [0004](0004-single-compose-file-for-all-services.md) | サーバーで動かす全サービスを1つの compose ファイルにまとめる | 採用 | 2026-10-12 |
 | [0005](0005-back-up-service-data-to-nas-with-restic.md) | サービスのデータを restic で NAS へ毎日バックアップする | 採用 | 2026-10-25 |
+| [0006](0006-install-docker-from-official-apt-repo.md) | Docker を Docker 公式の apt リポジトリから Ansible で入れる | 採用 | 2026-10-26 |

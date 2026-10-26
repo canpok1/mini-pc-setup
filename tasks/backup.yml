@@ -168,9 +168,17 @@
     - mini-pc-backup-check.timer
   become: yes
 
+- name: Check if any backup target exists
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ backup_targets }}"
+  register: backup_target_stats
+
 - name: Back up before deploying changes
-  # oneshot のサービスは終わるまで戻らない。失敗したらここでデプロイを止める
+  # oneshot のサービスは終わるまで戻らない。失敗したらここでデプロイを止める。
+  # クリーンインストール直後は対象が1つも無く、スクリプトが失敗してデプロイが進まないため飛ばす
   ansible.builtin.systemd_service:
     name: mini-pc-backup.service
     state: started
   become: yes
+  when: backup_target_stats.results | selectattr('stat.exists') | list | length > 0

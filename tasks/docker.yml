@@ -55,6 +55,13 @@
         state: present
         update_cache: yes
 
+    - name: Enable and start docker
+      # 手で入れた環境では触らない。入れ方（snap など）によってはサービス名が docker ではない
+      ansible.builtin.systemd_service:
+        name: docker
+        enabled: yes
+        state: started
+
 - name: Check if Docker Compose plugin is available
   # docker_compose_v2 は `docker compose` を呼ぶ。手で入れた環境に無いと、後のタスクが分かりにくい形で失敗する
   ansible.builtin.command: docker compose version
@@ -67,11 +74,11 @@
     msg: "Docker は入っていますが `docker compose` が使えません。Docker を入れた方法に合わせて Compose プラグイン（v2）を入れてから、もう一度 make deploy してください。"
   when: docker_compose_version.rc != 0
 
-- name: Enable and start docker
-  ansible.builtin.systemd_service:
+- name: Create docker group
+  # 入れ方（snap など）によってはグループが作られない。無いと次のタスクが失敗する
+  ansible.builtin.group:
     name: docker
-    enabled: yes
-    state: started
+    state: present
   become: yes
 
 - name: Add login user to docker group

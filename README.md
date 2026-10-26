@@ -12,17 +12,18 @@ mini-pc のセットアップ用 Ansible プレイブックです。
 
 Ubuntu（または Debian）をインストールし、SSH で接続できて sudo できるユーザーがいれば足ります。Docker・Docker Compose は `make deploy` が Docker 公式の apt リポジトリから入れ、接続ユーザーを `docker` グループに加えます（ADR 0006）。すでに Docker が入っている環境では入れ直しません（`docker compose` が使えなければそこで止まります）。
 
-### GH_TOKEN の設定
+### GHCR のトークン
 
 plant-diary・health-connect-converter のコンテナイメージは ghcr.io から取得するため（trading-studio のイメージは公開のため不要）、GitHub Personal Access Token (PAT) が必要です。
 
 1. GitHubで `read:packages` スコープを持つPATを作成します。
-2. `.devcontainer/.env-template` をコピーして `.devcontainer/.env` を作成します。
-3. `GH_TOKEN` に作成したPATを設定します。
+2. `make edit-secrets` で `ghcr_token` に作成したPATを設定します。
 
 ```
-GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+ghcr_token: ghp_xxxxxxxxxxxxxxxxxxxx
 ```
+
+以前は手元の `.devcontainer/.env` の `GH_TOKEN` から読んでいましたが、自動デプロイ（後述）では手元の環境変数が使えないため `vars/secrets.yml` へ移しました。`make deploy` はもう `GH_TOKEN` を読みません。
 
 ### health-connect-converter のサービスアカウント鍵
 
@@ -111,7 +112,7 @@ sudo bash -c 'set -a; . /etc/mini-pc-backup/restic.env; restic restore latest --
 
 ## コンテナの自動更新
 
-plant-diary・health-connect-converter・trading-studio は [nicholas-fedor/watchtower](https://github.com/nicholas-fedor/watchtower)（`containrrr/watchtower` のメンテ継続フォーク。判断の経緯は `docs/adr/0001-adopt-watchtower-fork-for-container-auto-update.md`）により5分間隔で自動更新されます（Bifrost は対象外）。GHCRの認証はGH_TOKENでのログイン時に生成される `~/.docker/config.json` を再利用するため、追加設定は不要です。
+plant-diary・health-connect-converter・trading-studio は [nicholas-fedor/watchtower](https://github.com/nicholas-fedor/watchtower)（`containrrr/watchtower` のメンテ継続フォーク。判断の経緯は `docs/adr/0001-adopt-watchtower-fork-for-container-auto-update.md`）により5分間隔で自動更新されます（Bifrost は対象外）。GHCRの認証は `ghcr_token` でのログイン時に生成される `~/.docker/config.json` を再利用するため、追加設定は不要です。
 
 ## 使い方
 
@@ -135,6 +136,29 @@ make ping
 ```bash
 make deploy
 ```
+
+### 自動デプロイ
+
+main の変更は mini-pc 自身が取り込みます（ADR 0007）。15分ごとに systemd タイマーが `ansible-pull`（リポジトリを自分で取得し、playbook を自分自身に適用する Ansible のコマンド）を動かし、main に新しいコミットがあったときだけ、`make deploy` と同じ処理（NAS へのバックアップ → playbook の適用）を行います。**PR のマージがそのままデプロイになります。** 壊れた変更を入れたら revert して main へ入れてください。
+
+仕組みを入れるのは `make deploy` です。初回のみ次を行ってください。
+
+1. `make edit-secrets` で `deploy_vault_password` に、vault のパスワード（`make deploy` で入力しているもの）と同じ値を追加します。mini-pc の `/etc/mini-pc-deploy/vault-password`（root だけが読める）へ書き出され、自動デプロイが secrets.yml を開くのに使います
+2. `make deploy` を実行します。Ansible が mini-pc に入り、ログインユーザーの sudo がパスワード無しになります（自動実行ではパスワードを入力できないため）
+
+vault のパスワードを変えたとき（`ansible-vault rekey`）は、`deploy_vault_password` も同じ値に変えてから手元で `make deploy` してください。古いままだと自動デプロイが secrets.yml を開けずに失敗し続けます。
+
+失敗しても通知は来ません。mini-pc 上で次のように確認します。
+
+```bash
+systemctl list-timers mini-pc-deploy.timer     # 次回の実行時刻
+systemctl status mini-pc-deploy                # 前回の結果
+journalctl -u mini-pc-deploy                   # ログ
+sudo systemctl start mini-pc-deploy            # 今すぐ確認（変更が無ければ何もしない）
+sudo systemctl disable --now mini-pc-deploy.timer   # 自動デプロイを止める（次の make deploy で再開）
+```
+
+手元からの `make deploy` は、初回の構築と、main 以外のブランチを試すときに使います。
 
 ### 機密情報の更新
 

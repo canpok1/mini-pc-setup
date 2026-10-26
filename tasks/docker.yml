@@ -1,0 +1,89 @@
+# Docker Engine と Compose プラグインを Docker 公式の apt リポジトリから入れる（ADR 0006）。
+# 他のタスクはすべてこれが済んでいる前提で動く
+- name: Install base packages
+  # クリーンインストール直後でも揃っているはずだが、他のタスクが前提にしているので明示する。
+  # requests は community.docker のモジュール（docker_login・docker_network）が対象ホストで使う
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - git
+      - python3-requests
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Check if Docker is installed
+  # 手で入れた環境では導入の手順を飛ばす。入れ直すと dockerd が再起動し、動いているコンテナがすべて止まる。
+  # Ubuntu の docker.io で入れていた場合、公式の containerd.io と衝突する
+  ansible.builtin.command: which docker
+  register: docker_which
+  changed_when: false
+  failed_when: false
+
+- name: Install Docker
+  when: docker_which.rc != 0
+  become: yes
+  block:
+    - name: Create apt keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker apt signing key
+      ansible.builtin.get_url:
+        url: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg"
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} stable"
+        filename: docker
+        state: present
+
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+- name: Check if Docker Compose plugin is available
+  # docker_compose_v2 は `docker compose` を呼ぶ。手で入れた環境に無いと、後のタスクが分かりにくい形で失敗する
+  ansible.builtin.command: docker compose version
+  register: docker_compose_version
+  changed_when: false
+  failed_when: false
+
+- name: Fail if Docker Compose plugin is missing
+  ansible.builtin.fail:
+    msg: "Docker は入っていますが `docker compose` が使えません。Docker を入れた方法に合わせて Compose プラグイン（v2）を入れてから、もう一度 make deploy してください。"
+  when: docker_compose_version.rc != 0
+
+- name: Enable and start docker
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: yes
+    state: started
+  become: yes
+
+- name: Add login user to docker group
+  # 以降のタスクは become せずに docker を操作する
+  ansible.builtin.user:
+    name: "{{ ansible_facts['user_id'] }}"
+    groups: docker
+    append: yes
+  become: yes
+  register: docker_group
+
+- name: Reconnect to pick up docker group membership
+  # グループの追加は新しいログインから効く。張りっぱなしの SSH 接続を作り直す
+  ansible.builtin.meta: reset_connection
+  when: docker_group.changed

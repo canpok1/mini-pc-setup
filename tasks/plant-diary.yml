@@ -17,6 +17,14 @@
     state: present
   become: yes
 
+- name: Add login user to video group for webcam
+  # cron から動く撮影スクリプトが /dev/video* を開く。インストーラーが作るユーザーは video に入っていない
+  ansible.builtin.user:
+    name: "{{ ansible_facts['user_id'] }}"
+    groups: video
+    append: yes
+  become: yes
+
 - name: Clone plant-diary
   # コンテナはここの compose では動かさない。撮影スクリプトを使うためだけに clone する
   ansible.builtin.git:

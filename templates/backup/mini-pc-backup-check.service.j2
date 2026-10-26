@@ -5,6 +5,8 @@ RequiresMountsFor={{ backup_mount_point }}
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/mini-pc-backup/restic.env
+# 毎日のバックアップで忘れた世代のデータを NAS から消す
+ExecStart=/usr/bin/restic prune
 # 毎回全データを読むと時間がかかるため、一部だけ読んで壊れていないか確かめる
 ExecStart=/usr/bin/restic check --read-data-subset={{ backup_check_subset }}
 Nice=10

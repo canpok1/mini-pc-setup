@@ -1,0 +1,86 @@
+# main の変更を mini-pc 自身が ansible-pull で取り込んで適用する（ADR 0007）。
+# 他のタスクがすべて通った後に置く。途中で失敗した変更は自動デプロイの仕組みに入らない
+- name: Set auto-deploy variables
+  ansible.builtin.set_fact:
+    auto_deploy_user: "{{ ansible_facts['user_id'] }}"
+    auto_deploy_home: "{{ ansible_facts['env']['HOME'] }}"
+    auto_deploy_repo_url: https://github.com/canpok1/mini-pc-setup.git
+    auto_deploy_checkout_dir: "{{ ansible_facts['env']['HOME'] }}/.local/share/mini-pc-deploy/repo"
+    auto_deploy_vault_password_file: /etc/mini-pc-deploy/vault-password
+    # 変更が無ければ git fetch だけで終わる。バックアップのタイマー（3:30）と重なっても、
+    # デプロイ前のバックアップは実行中のものの終了を待つだけで二重には走らない
+    auto_deploy_interval: "*:0/15"
+
+- name: Install pipx
+  ansible.builtin.apt:
+    name: pipx
+    state: present
+  become: yes
+
+- name: Install Ansible for ansible-pull
+  # apt の ansible は Ubuntu のリリースによっては古く、docker_compose_v2 を含まない。
+  # ansible パッケージには community.docker と ansible.posix が同梱されている。既にあれば何もしない
+  ansible.builtin.command: pipx install --include-deps ansible
+  args:
+    creates: "{{ auto_deploy_home }}/.local/bin/ansible-pull"
+
+- name: Allow login user to sudo without password
+  # 自動実行ではパスワードを入力できない。become は任意のコマンドを実行するため、コマンドで絞っても意味がない。
+  # ログインユーザーは docker グループに入っており、もともと root と同等の権限を持つ
+  ansible.builtin.copy:
+    content: "{{ auto_deploy_user }} ALL=(ALL) NOPASSWD: ALL\n"
+    dest: /etc/sudoers.d/mini-pc-deploy
+    owner: root
+    group: root
+    mode: '0440'
+    validate: visudo -cf %s
+  become: yes
+
+- name: Create auto-deploy config directory
+  ansible.builtin.file:
+    path: /etc/mini-pc-deploy
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  become: yes
+
+- name: Place vault password for auto-deploy
+  # vault パスワード自身は vault に入れて配る。secrets.yml を開ける人はもともとこの値を知っている
+  ansible.builtin.copy:
+    content: "{{ deploy_vault_password }}"
+    dest: "{{ auto_deploy_vault_password_file }}"
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+  become: yes
+
+- name: Clone mini-pc-setup for ansible-pull
+  # 先に main を取っておく。無いと最初のタイマーで、変更が無くても全体を適用し直す。
+  # 既にあれば更新しない。更新は ansible-pull の役目で、ここで進めると実行中に main へ入った変更を取りこぼす
+  ansible.builtin.git:
+    repo: "{{ auto_deploy_repo_url }}"
+    dest: "{{ auto_deploy_checkout_dir }}"
+    version: main
+    update: no
+
+- name: Place systemd units for auto-deploy
+  ansible.builtin.template:
+    src: "templates/auto-deploy/{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - mini-pc-deploy.service
+    - mini-pc-deploy.timer
+  become: yes
+
+- name: Enable auto-deploy timer
+  ansible.builtin.systemd_service:
+    name: mini-pc-deploy.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: yes

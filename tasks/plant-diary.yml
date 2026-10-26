@@ -103,7 +103,7 @@
   community.docker.docker_login:
     registry_url: ghcr.io
     username: "USERNAME"
-    password: "{{ lookup('env', 'GH_TOKEN') }}"
+    password: "{{ ghcr_token }}"
 
 - name: Add execute permission to capture_auto.sh
   ansible.builtin.file:

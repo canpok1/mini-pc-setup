@@ -1,0 +1,8 @@
+[Unit]
+Description=Check mini-pc-setup main for changes and deploy them
+
+[Timer]
+OnCalendar={{ auto_deploy_interval }}
+
+[Install]
+WantedBy=timers.target

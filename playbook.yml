@@ -6,6 +6,14 @@
     - vars/secrets.yml
 
   tasks:
+  - name: Check required secrets
+    # 足りないと途中のタスクで分かりにくく失敗する。どちらも README の手順で make edit-secrets から足す
+    ansible.builtin.assert:
+      that:
+        - ghcr_token is defined
+        - deploy_vault_password is defined
+      fail_msg: "vars/secrets.yml に ghcr_token と deploy_vault_password を追加してください（README の「GHCR のトークン」「自動デプロイ」）。"
+
   - name: Setup docker
     ansible.builtin.import_tasks: tasks/docker.yml
 
@@ -35,3 +43,6 @@
 
   - name: Setup watchtower
     ansible.builtin.import_tasks: tasks/watchtower.yml
+
+  - name: Setup auto-deploy
+    ansible.builtin.import_tasks: tasks/auto-deploy.yml

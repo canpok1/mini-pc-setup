@@ -42,7 +42,7 @@
   community.docker.docker_login:
     registry_url: ghcr.io
     username: "USERNAME"
-    password: "{{ lookup('env', 'GH_TOKEN') }}"
+    password: "{{ ghcr_token }}"
 
 - name: Run Docker Compose up for health-connect-converter
   community.docker.docker_compose_v2:

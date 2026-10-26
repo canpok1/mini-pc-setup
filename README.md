@@ -99,7 +99,7 @@ sudo systemctl start mini-pc-backup      # 今すぐ取る
 sudo bash -c 'set -a; . /etc/mini-pc-backup/restic.env; restic snapshots'   # 世代の一覧
 ```
 
-世代は日次7・週次4・月次12を残します。同じ日に複数回取った場合は、その日の最後の1つが残ります。
+世代は日次7・週次4・月次12を残します。同じ日に複数回取った場合は、その日の最後の1つが残ります。残さない世代のデータが NAS から実際に消えるのは、毎週日曜の点検（`mini-pc-backup-check`）のときです。
 
 復元は、取り出したい場所へ restore してから手でコピーします。SQLite の DB は元の場所ではなく `/var/lib/mini-pc-backup/sqlite/` の下に、元の絶対パスのまま入っています（動作中の DB を安全に複製したもの）。コピーする前に対象のサービスを止めてください。
 

@@ -44,7 +44,9 @@ while IFS= read -r -d '' f; do
 done < <(find "${existing[@]}" -type f -size +0 -print0)
 
 restic backup --exclude-file "$EXCLUDE_FILE" "${existing[@]}" "$STAGING"
-restic forget --prune \
+# 消した世代のデータを NAS から実際に消す prune は重いため、週1回の点検で行う（ADR 0005）。
+# ここで行うと、同じ日の2回目（deploy 前）で毎回走り、deploy が遅くなる
+restic forget \
   --keep-daily {{ backup_keep_daily }} \
   --keep-weekly {{ backup_keep_weekly }} \
   --keep-monthly {{ backup_keep_monthly }}

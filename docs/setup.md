@@ -59,7 +59,7 @@ NAS の IP や共有名、世代数は `tasks/backup.yml` の変数で変えら�
 
 ## Bifrost（AI ゲートウェイ）
 
-アプリからの AI の呼び出しをまとめる [Bifrost](https://github.com/maximhq/bifrost) を動かします（ADR 0002・0003）。Gemini などの本物の API キーは Bifrost の管理画面にだけ登録し、アプリには Bifrost が発行する仮想キーを渡します。
+アプリからの AI の呼び出しをまとめる [Bifrost](https://github.com/maximhq/bifrost) を動かします（ADR 0002・0003）。Gemini などの本物の API キーは Bifrost の管理画面に登録し、アプリには Bifrost が発行する仮想キーを渡します（plant-diary だけは移行前のため `gemini_api_key` を直接使います）。
 
 1. 次の2つを設定します。値は `openssl rand -base64 32` などで作ります。
    - `bifrost_encryption_key`: 登録した API キーを暗号化する鍵。**後から変えると登録済みのキーが読めなくなります。** 失くさないよう別に控えてください

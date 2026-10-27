@@ -14,7 +14,7 @@
 
 ## AI の呼び出し（Bifrost）
 
-アプリは Docker ネットワーク `ai` に参加し、`http://bifrost:8080` を Bifrost が発行した仮想キーで呼びます（ADR 0003）。本物の API キーは Bifrost の中にだけあります。Bifrost のバージョンは `tasks/bifrost.yml` の `bifrost_version` で固定しており、自動更新はしません。
+アプリは Docker ネットワーク `ai` に参加し、`http://bifrost:8080` を Bifrost が発行した仮想キーで呼びます（ADR 0003）。本物の API キーは Bifrost の中にだけあります。ただし plant-diary はまだ移していないため、`gemini_api_key` を直接使います。Bifrost のバージョンは `tasks/bifrost.yml` の `bifrost_version` で固定しており、自動更新はしません。
 
 ## 自動デプロイ
 

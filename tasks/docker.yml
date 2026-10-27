@@ -14,6 +14,35 @@
     cache_valid_time: 3600
   become: yes
 
+- name: Check if Docker is installed from snap
+  # snap 版は Docker 公式の apt 版へ入れ替える（ADR 0009）
+  ansible.builtin.command: snap list docker
+  register: docker_snap
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Replace Docker from snap with the official apt packages
+  when: docker_snap.rc == 0
+  block:
+    - name: List docker volumes before removing snap Docker
+      # snap を消すと Docker の管理下のデータ（イメージ・名前付きボリューム）も消える。
+      # サービスのデータはすべてホストのディレクトリ（bind mount）にあり、名前付きボリュームは使っていない
+      ansible.builtin.command: docker volume ls -q
+      register: docker_snap_volumes
+      changed_when: false
+
+    - name: Fail if snap Docker has named volumes
+      ansible.builtin.fail:
+        msg: "snap 版 Docker に名前付きボリュームがあります（{{ docker_snap_volumes.stdout_lines | join(', ') }}）。snap を消すと失われるため入れ替えを止めました。中身を退避してから、もう一度 make deploy してください。"
+      when: docker_snap_volumes.stdout_lines | length > 0
+
+    - name: Remove snap Docker
+      # 全コンテナがここで止まり、後のタスクの docker compose up で apt 版の上に作り直される。
+      # --purge: 消す前の自動の退避（イメージを含み数GBになる）を作らない。イメージは取り直せる
+      ansible.builtin.command: snap remove --purge docker
+      become: yes
+
 - name: Check if Docker is installed
   # 手で入れた環境では導入の手順を飛ばす。入れ直すと dockerd が再起動し、動いているコンテナがすべて止まる。
   # Ubuntu の docker.io で入れていた場合、公式の containerd.io と衝突する

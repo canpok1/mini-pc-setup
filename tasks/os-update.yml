@@ -1,0 +1,110 @@
+# OS と apt で入れたミドルウェアを unattended-upgrades で毎日自動更新する（ADR 0008）。
+# Ubuntu 公式の更新は公開から一定日数たったものだけを入れる。再起動が必要な更新のときは、更新の直後に自動で再起動する
+- name: Set os-update variables
+  ansible.builtin.set_fact:
+    # mini-pc の時計は UTC のため、タイムゾーンを明示する。
+    # バックアップ（3:30）と重ねない。再起動はこの更新の直後に行う
+    os_update_time: "05:00:00 Asia/Tokyo"
+    # 公開から何日たった更新を入れるか。セキュリティ修正と外部リポジトリには効かない
+    os_update_delay_days: 7
+    # Ubuntu の更新に加え、追加した外部リポジトリも対象にする
+    os_update_sites:
+      - pkgs.tailscale.com
+      - download.docker.com
+
+- name: Check for legacy apt sources.list entries
+  # ubuntu.sources を置き換えるので、古い形式の sources.list に同じリポジトリがあると二重になる
+  ansible.builtin.command: grep -E '^[[:space:]]*deb' /etc/apt/sources.list
+  register: os_update_legacy_sources
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Fail if legacy apt sources.list has entries
+  ansible.builtin.fail:
+    msg: "/etc/apt/sources.list に deb の行があります。/etc/apt/sources.list.d/ubuntu.sources（deb822 形式）へ移してから、もう一度 make deploy してください。"
+  when: os_update_legacy_sources.rc == 0
+
+- name: Place Ubuntu apt sources
+  ansible.builtin.template:
+    src: templates/os-update/ubuntu.sources.j2
+    dest: /etc/apt/sources.list.d/ubuntu.sources
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Install packages for unattended upgrades
+  # update-notifier-common は再起動が必要なときに /var/run/reboot-required を作る。
+  # これが無いと unattended-upgrades は再起動の要否を判断できない
+  ansible.builtin.apt:
+    name:
+      - unattended-upgrades
+      - update-notifier-common
+    state: present
+  become: yes
+
+- name: Enable periodic unattended upgrades
+  ansible.builtin.copy:
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Place unattended-upgrades config
+  # 標準の 50unattended-upgrades は書き換えず、後から読まれるファイルで上書きする。
+  # パッケージの更新で 50unattended-upgrades が差し替わっても設定が消えない
+  ansible.builtin.template:
+    src: templates/os-update/52mini-pc-unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/52mini-pc-unattended-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Place apt snapshot script
+  ansible.builtin.template:
+    src: templates/os-update/mini-pc-apt-snapshot.sh.j2
+    dest: /usr/local/sbin/mini-pc-apt-snapshot
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Create drop-in directories for apt-daily-upgrade
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ item }}.d"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - apt-daily-upgrade.timer
+    - apt-daily-upgrade.service
+  become: yes
+
+- name: Place drop-ins for apt-daily-upgrade
+  # タイマー: 標準では 6:00（UTC）から最大1時間ずれて動き、JST の昼の時間帯に再起動しうる。
+  # サービス: 更新の前に snapshot へ切り替える
+  ansible.builtin.template:
+    src: "templates/os-update/{{ item.src }}"
+    dest: "/etc/systemd/system/{{ item.unit }}.d/override.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - { src: apt-daily-upgrade-timer-override.conf.j2, unit: apt-daily-upgrade.timer }
+    - { src: apt-daily-upgrade-service-override.conf.j2, unit: apt-daily-upgrade.service }
+  become: yes
+
+- name: Enable apt-daily-upgrade timer
+  ansible.builtin.systemd_service:
+    name: apt-daily-upgrade.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: yes

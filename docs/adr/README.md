@@ -11,3 +11,4 @@
 | [0005](0005-back-up-service-data-to-nas-with-restic.md) | サービスのデータを restic で NAS へ毎日バックアップする | 採用 | 2026-10-25 |
 | [0006](0006-install-docker-from-official-apt-repo.md) | Docker を Docker 公式の apt リポジトリから Ansible で入れる | 採用 | 2026-10-26 |
 | [0007](0007-auto-deploy-with-ansible-pull.md) | main の変更を mini-pc 自身が ansible-pull で取り込んで適用する | 採用 | 2026-10-26 |
+| [0008](0008-auto-update-os-with-unattended-upgrades.md) | OS と apt のパッケージを unattended-upgrades で毎日自動更新する | 採用 | 2026-10-27 |

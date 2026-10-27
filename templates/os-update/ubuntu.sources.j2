@@ -1,0 +1,14 @@
+# mini-pc-setup が配置する（tasks/os-update.yml、ADR 0008）。手で書き換えても次のデプロイで戻る
+Types: deb
+URIs: http://archive.ubuntu.com/ubuntu/
+Suites: {{ ansible_facts['distribution_release'] }} {{ ansible_facts['distribution_release'] }}-updates {{ ansible_facts['distribution_release'] }}-backports
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+# セキュリティ修正は待たずに入れるため、日数待ち（snapshot）の対象から外す
+Types: deb
+URIs: http://security.ubuntu.com/ubuntu/
+Suites: {{ ansible_facts['distribution_release'] }}-security
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+Snapshot: no

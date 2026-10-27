@@ -41,6 +41,9 @@
   - name: Setup tailscale
     ansible.builtin.import_tasks: tasks/tailscale.yml
 
+  - name: Update OS automatically
+    ansible.builtin.import_tasks: tasks/os-update.yml
+
   - name: Setup watchtower
     ansible.builtin.import_tasks: tasks/watchtower.yml
 

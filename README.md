@@ -3,8 +3,12 @@
 mini-pc のセットアップ用 Ansible プレイブックです。
 
 ## 必要なもの
-- Ansible
+
+手元のマシンから直接実行します。次のものを入れてください（入れ方は問いません）。
+
+- Ansible と、コレクション `community.docker`（`docker_compose_v2` を含む版）・`ansible.posix`（`ansible` パッケージには両方同梱されている）
 - make
+- ssh
 
 ## 前提条件
 
@@ -23,7 +27,7 @@ plant-diary・health-connect-converter のコンテナイメージは ghcr.io �
 ghcr_token: ghp_xxxxxxxxxxxxxxxxxxxx
 ```
 
-以前は手元の `.devcontainer/.env` の `GH_TOKEN` から読んでいましたが、自動デプロイ（後述）では手元の環境変数が使えないため `vars/secrets.yml` へ移しました。`make deploy` はもう `GH_TOKEN` を読みません。
+以前は devcontainer の `.devcontainer/.env` の `GH_TOKEN` から読んでいましたが、自動デプロイ（後述）では手元の環境変数が使えないため `vars/secrets.yml` へ移しました。devcontainer も削除済みです。
 
 ### health-connect-converter のサービスアカウント鍵
 

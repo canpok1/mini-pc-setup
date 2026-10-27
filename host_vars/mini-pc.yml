@@ -1,0 +1,4 @@
+# 手元からの make deploy で mini-pc に適用するときの設定。
+# 自動検出に任せると見つかった版（python3.12 など）を使い、毎回警告が出る。
+# モジュールは python3-requests などを入れた OS の Python で動かす（localhost.yml と同じ）
+ansible_python_interpreter: /usr/bin/python3

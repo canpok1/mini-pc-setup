@@ -123,9 +123,8 @@
     groups: docker
     append: yes
   become: yes
-  register: docker_group
 
 - name: Reconnect to pick up docker group membership
-  # グループの追加は新しいログインから効く。張りっぱなしの SSH 接続を作り直す
+  # グループの追加は新しいログインから効く。張りっぱなしの SSH 接続を作り直す。
+  # meta は when を受け付けず毎回動くため、条件は書かない（接続を1回張り直すだけで害はない）
   ansible.builtin.meta: reset_connection
-  when: docker_group.changed

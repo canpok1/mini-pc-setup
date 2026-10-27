@@ -1,0 +1,11 @@
+#!/bin/sh
+# 毎朝の自動更新の直前に、apt が参照するリポジトリを「{{ os_update_delay_days }}日前の時点」へ切り替える（ADR 0008）。
+# 公開されてから{{ os_update_delay_days }}日たった版だけが更新の候補になる。
+# snapshot.ubuntu.com が使える Ubuntu 公式のリポジトリにだけ効く。セキュリティ修正は ubuntu.sources で対象から外している
+set -eu
+
+snapshot_id=$(date -u -d '{{ os_update_delay_days }} days ago' +%Y%m%dT%H%M%SZ)
+printf 'APT::Snapshot "%s";\n' "$snapshot_id" > /etc/apt/apt.conf.d/51mini-pc-snapshot
+
+# 失敗したらこのスクリプトごと失敗させ、その日の更新を止める
+apt-get update -q

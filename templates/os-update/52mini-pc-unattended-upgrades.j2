@@ -1,0 +1,22 @@
+// mini-pc-setup が配置する（tasks/os-update.yml、ADR 0008）。手で書き換えても次のデプロイで戻る
+
+// 標準ではセキュリティ更新だけが対象。通常の更新と外部リポジトリも入れる
+#clear Unattended-Upgrade::Origins-Pattern;
+Unattended-Upgrade::Origins-Pattern {
+        "origin=${distro_id},archive=${distro_codename}";
+        "origin=${distro_id},archive=${distro_codename}-security";
+        "origin=${distro_id},archive=${distro_codename}-updates";
+{% for site in os_update_sites %}
+        "site={{ site }}";
+{% endfor %}
+};
+
+// 再起動が必要な更新のときは、更新が終わったらすぐ再起動する。
+// 時刻はタイマー（apt-daily-upgrade.timer）で決める。ここで時刻を書くと mini-pc の時計（UTC）で解釈される
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time "now";
+
+// 古いカーネルと不要になった依存を消し、/boot が埋まるのを防ぐ
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";

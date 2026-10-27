@@ -114,6 +114,25 @@ sudo bash -c 'set -a; . /etc/mini-pc-backup/restic.env; restic restore latest --
 
 plant-diary・health-connect-converter・trading-studio は [nicholas-fedor/watchtower](https://github.com/nicholas-fedor/watchtower)（`containrrr/watchtower` のメンテ継続フォーク。判断の経緯は `docs/adr/0001-adopt-watchtower-fork-for-container-auto-update.md`）により5分間隔で自動更新されます（Bifrost は対象外）。GHCRの認証は `ghcr_token` でのログイン時に生成される `~/.docker/config.json` を再利用するため、追加設定は不要です。
 
+## OS の自動更新
+
+OS と apt で入れたミドルウェア（Tailscale・Docker など）は、Ubuntu 標準の unattended-upgrades が毎日 5:00 JST に更新します（ADR 0008）。
+
+- Ubuntu 公式の更新は、公開から7日たったものだけを入れます（snapshot.ubuntu.com の「7日前の時点」を参照）。セキュリティ修正は待たずに翌朝入れます
+- Tailscale・Docker は公開後すぐの版が入ります
+- 再起動が必要な更新のときは、更新の直後に自動で再起動します
+
+失敗しても通知は来ません。mini-pc 上で次のように確認します。
+
+```bash
+systemctl list-timers apt-daily-upgrade.timer   # 次回の実行時刻
+journalctl -u apt-daily-upgrade                 # 前回の結果
+less /var/log/unattended-upgrades/unattended-upgrades.log   # 何を更新したか
+cat /etc/apt/apt.conf.d/51mini-pc-snapshot      # 参照している時点
+```
+
+手で `apt install` したときも、この時点の版が入ります。最新を入れたいときは `sudo apt-get -o APT::Snapshot= update` してから入れてください。
+
 ## 使い方
 
 1. `~/.ssh/config` に mini-pc への接続設定を行います。

@@ -59,7 +59,7 @@
   become: yes
 
 - name: Place deploy environment for auto-deploy
-  # 手元から make deploy ENV=<環境> で適用したときの環境を、以降の自動デプロイでも使う
+  # 手元から make deploy-<環境> で適用したときの環境を、以降の自動デプロイでも使う
   ansible.builtin.copy:
     content: |
       deploy_env: {{ deploy_env }}

@@ -1,22 +1,31 @@
-# 適用先の環境。inventories/<環境>/ を使う（ADR 0010）。例: make deploy ENV=staging
-ENV ?= production
-INVENTORY := inventories/$(ENV)/hosts.ini
+# 適用先の環境ごとにコマンドを分け、環境を書き忘れても本番へ流れないようにする（ADR 0010）
+PRODUCTION := -i inventories/production/hosts.ini
+STAGING := -i inventories/staging/hosts.ini
 
-.PHONY: help ping bootstrap deploy edit-secrets
+.PHONY: help ping-production ping-staging bootstrap-production bootstrap-staging deploy-production deploy-staging edit-secrets
 
 help: ## 使い方の表示
 	@echo "使用可能なコマンド:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  make %-15s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  make %-22s %s\n", $$1, $$2}'
 
-ping: ## 接続確認
-	ansible all -i $(INVENTORY) -m ping
+ping-production: ## 本番への接続確認
+	ansible all $(PRODUCTION) -m ping
 
-bootstrap: ## 初回のプレイブック実行（sudo のパスワードを聞く）
-	ansible-playbook -i $(INVENTORY) playbook.yml --ask-vault-pass --ask-become-pass
+ping-staging: ## staging への接続確認
+	ansible all $(STAGING) -m ping
+
+bootstrap-production: ## 本番への初回のプレイブック実行（sudo のパスワードを聞く）
+	ansible-playbook $(PRODUCTION) playbook.yml --ask-vault-pass --ask-become-pass
+
+bootstrap-staging: ## staging への初回のプレイブック実行（sudo のパスワードを聞く）
+	ansible-playbook $(STAGING) playbook.yml --ask-vault-pass --ask-become-pass
 
 # 一度 bootstrap か deploy を通すと、接続ユーザーの sudo はパスワード無しになる（ADR 0007）
-deploy: ## プレイブック実行
-	ansible-playbook -i $(INVENTORY) playbook.yml --ask-vault-pass
+deploy-production: ## 本番へのプレイブック実行
+	ansible-playbook $(PRODUCTION) playbook.yml --ask-vault-pass
+
+deploy-staging: ## staging へのプレイブック実行
+	ansible-playbook $(STAGING) playbook.yml --ask-vault-pass
 
 edit-secrets: ## 機密情報の編集
 	ansible-vault edit vars/secrets.yml

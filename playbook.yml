@@ -20,7 +20,7 @@
       that:
         - deploy_env is defined
         - deploy_env in ['production', 'staging']
-      fail_msg: "deploy_env が production か staging ではありません。手元からは make deploy ENV=<環境> で指定してください。自動デプロイで失敗したときは、手元から一度 make deploy してください。"
+      fail_msg: "deploy_env が production か staging ではありません。手元からは make deploy-production か make deploy-staging で実行してください。自動デプロイで失敗したときは、手元から一度 make deploy-<環境> してください。"
 
   - name: Setup docker
     ansible.builtin.import_tasks: tasks/docker.yml

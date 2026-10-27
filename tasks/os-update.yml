@@ -25,7 +25,7 @@
 
 - name: Fail if legacy apt sources.list has entries
   ansible.builtin.fail:
-    msg: "/etc/apt/sources.list に deb の行があります。/etc/apt/sources.list.d/ubuntu.sources（deb822 形式）へ移してから、もう一度 make deploy してください。"
+    msg: "/etc/apt/sources.list に deb の行があります。/etc/apt/sources.list.d/ubuntu.sources（deb822 形式）へ移してから、もう一度 make deploy-<環境> してください。"
   when: os_update_legacy_sources.rc == 0
 
 - name: Place Ubuntu apt sources

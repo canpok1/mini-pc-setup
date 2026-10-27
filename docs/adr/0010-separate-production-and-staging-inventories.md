@@ -14,7 +14,7 @@
 
 ## 決定
 
-- inventory を `inventories/production/` と `inventories/staging/` に分け、`group_vars/all.yml` の `deploy_env` で環境を表す。`make deploy ENV=staging` で切り替え、既定は production
+- inventory を `inventories/production/` と `inventories/staging/` に分け、`group_vars/all.yml` の `deploy_env` で環境を表す。make のコマンドも環境ごとに分ける（`make deploy-production`・`make deploy-staging`）。環境を書かない `make deploy` は置かず、書き忘れで本番へ流れないようにする
 - staging ではバックアップと health-connect-converter を入れない（`when: deploy_env == 'production'`）
 - 自動デプロイは staging にも入れる。手元からの適用時に `deploy_env` と追うブランチ（`auto_deploy_branch`）を `/etc/mini-pc-deploy/env.yml` に書き出し、`ansible-pull` へ `--extra-vars` で渡す。ファイルは `LoadCredential` で渡すため、無ければユニットが起動しない
 - `deploy_env` が無いか想定外の値なら、playbook の最初で止める
@@ -23,7 +23,7 @@
 
 - 検証機を作っても NAS と健康ログには触れない。Gemini の API キーや GHCR のトークンは共有のままで、使った分だけ同じ枠を消費する
 - staging で `auto_deploy_branch` を変えれば、そのブランチを本番より先に自動デプロイで試せる
-- 環境を間違えて指定すると本番扱いになりうる（既定が production）。staging の inventory には本番のホストを書かない
+- staging の inventory に本番のホストを書くと、本番が staging 扱いになりバックアップが止まる。書かない
 - `host_vars/localhost.yml` にも `deploy_env: production` を置く。この PR を取り込む前のユニットは `env.yml` を渡さないため、本番の初回の自動デプロイだけがこの値を使う
 
 ## 検討した代替案

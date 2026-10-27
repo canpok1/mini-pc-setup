@@ -1,4 +1,4 @@
-# auto_deploy_branch（既定は main）の変更をマシン自身が ansible-pull で取り込んで適用する（ADR 0007・0010）。
+# main の変更を mini-pc 自身が ansible-pull で取り込んで適用する（ADR 0007）。
 # 他のタスクがすべて通った後に置く。途中で失敗した変更は自動デプロイの仕組みに入らない
 - name: Set auto-deploy variables
   ansible.builtin.set_fact:
@@ -7,8 +7,6 @@
     auto_deploy_repo_url: https://github.com/canpok1/mini-pc-setup.git
     auto_deploy_checkout_dir: "{{ ansible_facts['env']['HOME'] }}/.local/share/mini-pc-deploy/repo"
     auto_deploy_vault_password_file: /etc/mini-pc-deploy/vault-password
-    # どの環境として適用するか。ansible-pull は inventory を使わないため、マシンに置いて渡す（ADR 0010）
-    auto_deploy_env_file: /etc/mini-pc-deploy/env.yml
     # 変更が無ければ git fetch だけで終わる。バックアップのタイマー（3:30）と重なっても、
     # デプロイ前のバックアップは実行中のものの終了を待つだけで二重には走らない
     auto_deploy_interval: "*:0/15"
@@ -58,25 +56,13 @@
   no_log: true
   become: yes
 
-- name: Place deploy environment for auto-deploy
-  # 手元から make deploy-<環境> で適用したときの環境を、以降の自動デプロイでも使う
-  ansible.builtin.copy:
-    content: |
-      deploy_env: {{ deploy_env }}
-      auto_deploy_branch: {{ auto_deploy_branch }}
-    dest: "{{ auto_deploy_env_file }}"
-    owner: root
-    group: root
-    mode: '0600'
-  become: yes
-
 - name: Clone mini-pc-setup for ansible-pull
-  # 先に追うブランチを取っておく。無いと最初のタイマーで、変更が無くても全体を適用し直す。
-  # 既にあれば更新しない。更新は ansible-pull の役目で、ここで進めると実行中にブランチへ入った変更を取りこぼす
+  # 先に main を取っておく。無いと最初のタイマーで、変更が無くても全体を適用し直す。
+  # 既にあれば更新しない。更新は ansible-pull の役目で、ここで進めると実行中に main へ入った変更を取りこぼす
   ansible.builtin.git:
     repo: "{{ auto_deploy_repo_url }}"
     dest: "{{ auto_deploy_checkout_dir }}"
-    version: "{{ auto_deploy_branch }}"
+    version: main
     update: no
 
 - name: Place systemd units for auto-deploy

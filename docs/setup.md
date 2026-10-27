@@ -92,6 +92,6 @@ VM や別の Linux 端末に、本番と同じ構成を作って動作を確か�
 2. `make ping-staging` で接続を確かめ、`make bootstrap-staging` で適用する
 3. Tailscale を使うなら、検証機でも `sudo tailscale up` してから `make deploy-staging` をもう一度実行する
 
-staging では NAS へのバックアップと health-connect-converter を入れません。どちらも本番と同じ NAS・スプレッドシートを読み書きするためです。自動デプロイは入り、`inventories/staging/group_vars/all.yml` の `auto_deploy_branch`（既定は main）を追います。Gemini の API キー（plant-diary）は本番と共有なので、使った分だけ同じ枠を消費します。
+staging では NAS へのバックアップと health-connect-converter を入れません。どちらも本番と同じ NAS・スプレッドシートを読み書きするためです。自動デプロイも入れません（サーバーに Ansible を入れない）。変更は手元から `make deploy-staging` で入れます。Gemini の API キー（plant-diary）は本番と共有なので、使った分だけ同じ枠を消費します。
 
-**`inventories/staging/hosts.ini` に本番のホストを書かないでください。** 本番の mini-pc の自動デプロイが staging の設定に切り替わり、バックアップが止まります。
+**`inventories/staging/hosts.ini` に本番のホストを書かないでください。** 本番の mini-pc に staging の設定が適用され、デプロイ前のバックアップが飛ばされます。

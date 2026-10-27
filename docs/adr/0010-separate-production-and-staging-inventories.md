@@ -10,24 +10,23 @@
 - NAS へのバックアップ（ADR 0005）: 本番と同じ restic リポジトリへ書く。`restic forget` はホスト名とパスで世代をまとめるため、ホスト名とユーザー名が本番と同じだと、検証機の世代が本番のその日の世代を押し出して消す。週1回の prune の排他ロックとも競合しうる
 - health-connect-converter: 本番と同じサービスアカウント鍵・Drive フォルダ・スプレッドシートを読み書きする
 
-自動デプロイ（ADR 0007）の変更も、本番より先に試せるようにしたい。ただし `ansible-pull` は inventory を使わず、どのマシンでも自分を `localhost` として適用する。
-
 ## 決定
 
-- inventory を `inventories/production/` と `inventories/staging/` に分け、`group_vars/all.yml` の `deploy_env` で環境を表す。make のコマンドも環境ごとに分ける（`make deploy-production`・`make deploy-staging`）。環境を書かない `make deploy` は置かず、書き忘れで本番へ流れないようにする
-- staging ではバックアップと health-connect-converter を入れない（`when: deploy_env == 'production'`）
-- 自動デプロイは staging にも入れる。手元からの適用時に `deploy_env` と追うブランチ（`auto_deploy_branch`）を `/etc/mini-pc-deploy/env.yml` に書き出し、`ansible-pull` へ `--extra-vars` で渡す。ファイルは `LoadCredential` で渡すため、無ければユニットが起動しない
+- inventory を `inventories/production/` と `inventories/staging/` に分け、`group_vars/all.yml` の `deploy_env` で環境を表す
+- make のコマンドも環境ごとに分ける（`make deploy-production`・`make deploy-staging` など）。環境を書かない `make deploy` は置かず、書き忘れで本番へ流れないようにする
+- staging ではバックアップ・health-connect-converter・自動デプロイ（ADR 0007）を入れない（`when: deploy_env == 'production'`）
+- 自動デプロイ（`ansible-pull`）は inventory を使わないため、本番の環境は `host_vars/localhost.yml` の `deploy_env: production` で決める
 - `deploy_env` が無いか想定外の値なら、playbook の最初で止める
 
 ## 結果
 
 - 検証機を作っても NAS と健康ログには触れない。Gemini の API キーや GHCR のトークンは共有のままで、使った分だけ同じ枠を消費する
-- staging で `auto_deploy_branch` を変えれば、そのブランチを本番より先に自動デプロイで試せる
-- staging の inventory に本番のホストを書くと、本番が staging 扱いになりバックアップが止まる。書かない
-- `host_vars/localhost.yml` にも `deploy_env: production` を置く。この PR を取り込む前のユニットは `env.yml` を渡さないため、本番の初回の自動デプロイだけがこの値を使う
+- 検証機には Ansible を入れない。サーバーには動かすサービスに関わるものだけを置く
+- 自動デプロイ自体の変更は staging で試せない
+- staging の inventory に本番のホストを書くと、本番にバックアップ無しの設定が当たる。書かない
 
 ## 検討した代替案
 
-- **staging では自動デプロイを入れない**: 単純だが、自動デプロイ自体の変更を本番より先に試せない
+- **staging にも自動デプロイを入れ、環境と追うブランチをマシン上のファイルで渡す**: 自動デプロイの変更を先に試せるが、仕組みが複雑になり、検証機にも Ansible が要る。自動デプロイは将来、外部から実行する方式に変える可能性があり、今作り込んでも捨てることになる
 - **staging でも NAS にバックアップし、リポジトリを分ける**: NAS の容量と設定が増える。検証機のデータは守る価値が無い
 - **タグ（`--skip-tags`）で飛ばす**: 指定を忘れると本番に影響する。環境を inventory で固定するほうが忘れにくい

@@ -22,7 +22,7 @@ sudo systemctl disable --now mini-pc-deploy.timer   # 自動デプロイを止�
 
 ### main 以外のブランチを試す
 
-本番に入れる前に試すなら、[staging 環境](setup.md#staging-環境)で `inventories/staging/group_vars/all.yml` の `auto_deploy_branch` をそのブランチにして `make deploy-staging` するのが安全です。本番の mini-pc で試すときは次の手順です。
+本番に入れる前に試すなら、手元でブランチを checkout して [staging 環境](setup.md#staging-環境)へ `make deploy-staging` するのが安全です。本番の mini-pc で試すときは次の手順です。
 
 1. mini-pc で `sudo systemctl disable --now mini-pc-deploy.timer` を実行し、自動デプロイを止める
 2. 手元でブランチを checkout して `make deploy-production`。**`make deploy-production` は自動デプロイのタイマーを再び有効にする**ので、試している間に main へ入った変更で上書きされたくなければ、1 をもう一度実行する

@@ -3,8 +3,6 @@
 ansible_connection: local
 # ansible-pull は pipx の venv で動く。モジュールは python3-requests を入れた OS の Python で動かす
 ansible_python_interpreter: /usr/bin/python3
-# 自動デプロイは /etc/mini-pc-deploy/env.yml の値を -e で渡し、こちらより優先される（ADR 0010）。
-# 以下が効くのは、env.yml を渡さない以前のユニットで動いている本番の mini-pc だけ。
-# staging のユニットは env.yml が無いと起動しないため、ここに落ちない
+# ansible-pull は inventory を使わないため、ここで環境を決める。
+# 自動デプロイは本番の mini-pc にだけ入れるので production 固定（ADR 0010）
 deploy_env: production
-auto_deploy_branch: main

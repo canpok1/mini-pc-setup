@@ -3,8 +3,23 @@
 mini-pc のセットアップ用 Ansible プレイブックです。
 
 ## 必要なもの
-- Ansible
+
+手元の Mac から直接実行します。必要なのは次の3つです。
+
+- Ansible（`ansible` パッケージ。`community.docker`・`ansible.posix` が同梱されているので、コレクションは別に入れなくてよい）
 - make
+- ssh
+
+make と ssh は macOS に標準で入っています（make が無ければ `xcode-select --install`）。Ansible は [Homebrew](https://brew.sh/) の pipx で入れます。
+
+```bash
+brew install pipx
+pipx ensurepath   # ~/.local/bin を PATH に足す。実行後にターミナルを開き直す
+pipx install --include-deps ansible
+ansible --version
+```
+
+mini-pc の自動デプロイ（後述）も同じく pipx で `ansible` を入れています。apt など別の手段で入る古い Ansible は、使っているモジュール（`community.docker.docker_compose_v2`）を含まないことがあります。
 
 ## 前提条件
 
@@ -23,7 +38,7 @@ plant-diary・health-connect-converter のコンテナイメージは ghcr.io �
 ghcr_token: ghp_xxxxxxxxxxxxxxxxxxxx
 ```
 
-以前は手元の `.devcontainer/.env` の `GH_TOKEN` から読んでいましたが、自動デプロイ（後述）では手元の環境変数が使えないため `vars/secrets.yml` へ移しました。`make deploy` はもう `GH_TOKEN` を読みません。
+以前は devcontainer の `.devcontainer/.env` の `GH_TOKEN` から読んでいましたが、自動デプロイ（後述）では手元の環境変数が使えないため `vars/secrets.yml` へ移しました。devcontainer も削除済みです。
 
 ### health-connect-converter のサービスアカウント鍵
 

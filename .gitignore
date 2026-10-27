@@ -1,1 +1,3 @@
 /backup/
+# devcontainer は削除済み。手元に残った .devcontainer/.env（GH_TOKEN）を誤ってコミットしないよう除外する
+/.devcontainer/

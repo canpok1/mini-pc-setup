@@ -7,6 +7,9 @@
     os_update_time: "05:00:00 Asia/Tokyo"
     # 公開から何日たった更新を入れるか。セキュリティ修正と外部リポジトリには効かない
     os_update_delay_days: 7
+    # snapshot.ubuntu.com が一時的に応答しないときの取り直し。最大で (回数-1)×間隔 だけ更新が遅れる
+    os_update_snapshot_attempts: 4
+    os_update_snapshot_retry_interval: 600
     # Ubuntu の更新に加え、追加した外部リポジトリも対象にする
     os_update_sites:
       - pkgs.tailscale.com

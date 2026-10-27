@@ -39,10 +39,10 @@ trading-studio・plant-diary・Bifrost の管理画面は mini-pc の `127.0.0.1
 
 Tailscale の導入と Serve の設定はプレイブックが行いますが、次の2つは手動で行ってください。
 
-1. Tailscale の管理画面で MagicDNS と HTTPS 証明書を有効にする
-2. mini-pc で `sudo tailscale up` を実行してログインする（認証用の鍵を secrets に置かないため）
+1. `make bootstrap` の前に、Tailscale の管理画面で MagicDNS と HTTPS 証明書を有効にする
+2. `make bootstrap` の後に、mini-pc で `sudo tailscale up` を実行してログインする（Tailscale はプレイブックが入れるため。認証用の鍵は secrets に置かない）
 
-ログイン前にプレイブックを実行すると Serve の設定は飛ばされます。ログイン後にもう一度実行してください。
+ログイン前の実行では Serve の設定は飛ばされます。ログイン後に手元から `make deploy` をもう一度実行してください。
 
 ## NAS へのバックアップ
 

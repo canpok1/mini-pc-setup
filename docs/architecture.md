@@ -30,7 +30,7 @@ plant-diary・health-connect-converter・trading-studio は [nicholas-fedor/watc
 
 OS と apt で入れたミドルウェア（Tailscale・Docker など）は、Ubuntu 標準の unattended-upgrades が毎日 5:00 JST に更新します（ADR 0008）。
 
-- Ubuntu 公式の更新は、公開から7日たったものだけを入れます（snapshot.ubuntu.com の「7日前の時点」を参照）。セキュリティ修正は待たずに翌朝入れます
+- Ubuntu 公式の更新は、公開から7日たったものだけを入れます（snapshot.ubuntu.com の「7日前の時点」を参照）。セキュリティ修正は7日を待たず、次の 5:00 の実行で入れます
 - Tailscale・Docker は公開後すぐの版が入ります
 - snapshot.ubuntu.com に繋がらない日は、Ubuntu 公式の通常の更新を見送ります（セキュリティ修正と Tailscale・Docker は入ります）
 - 再起動が必要な更新のときは、更新の直後に自動で再起動します

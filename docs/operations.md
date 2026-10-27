@@ -30,7 +30,7 @@ docker compose restart bifrost    # 1サービスだけ再起動
 
 手元で `make edit-secrets` して編集し、main へ入れるか `make deploy` します。
 
-vault のパスワードを変えたとき（`ansible-vault rekey`）は、`deploy_vault_password` も同じ値に変えてから手元で `make deploy` してください。古いままだと自動デプロイが `vars/secrets.yml` を開けずに失敗し続けます。
+vault のパスワードを変えたとき（`ansible-vault rekey`）は、`deploy_vault_password` も同じ値に変えてから手元で `make deploy` してください。自動デプロイは mini-pc に書き出した古いパスワードで `vars/secrets.yml` を開こうとするため、手元から一度実行して書き換えるまで失敗し続けます。
 
 ## バックアップと復元
 
@@ -43,7 +43,7 @@ sudo systemctl start mini-pc-backup      # 今すぐ取る
 sudo bash -c 'set -a; . /etc/mini-pc-backup/restic.env; restic snapshots'   # 世代の一覧
 ```
 
-復元は、取り出したい場所へ restore してから手でコピーします。コピーする前に対象のサービスを止めてください。SQLite の DB は元の場所ではなく `/var/lib/mini-pc-backup/sqlite/` の下に、元の絶対パスのまま入っています（動作中の DB を安全に複製したもの）。
+復元は、取り出したい場所へ restore してから手でコピーします。コピーする前に対象のサービスを止めてください。restore 先には元の絶対パスのまま展開されます（例: `/tmp/restore/home/<ユーザー>/services/...`）。SQLite の DB だけは元の場所ではなく `/var/lib/mini-pc-backup/sqlite/` の下に、元の絶対パスのまま入っています（動作中の DB を安全に複製したもの）。つまり `/tmp/restore/var/lib/mini-pc-backup/sqlite/<元の絶対パス>` です。
 
 ```bash
 sudo bash -c 'set -a; . /etc/mini-pc-backup/restic.env; restic restore latest --target /tmp/restore'
@@ -65,4 +65,4 @@ cat /etc/apt/apt.conf.d/51mini-pc-snapshot      # 参照している時点
 以前の配置から移したときの残りです。確かめてから手で消して構いません。
 
 - `~/src/plant-diary/data/plant_log.db`: 移行前の plant-diary の DB。新しい配置で日記が見えることを確かめてから。clone 自体は撮影スクリプトが使うため消さない
-- 手元の `backup/`: 以前の `make deploy` が残したコピー。NAS へのバックアップと復元を確かめてから
+- 手元の clone 直下の `backup/`: 以前の `make deploy` が残したコピー。NAS へのバックアップと復元を確かめてから

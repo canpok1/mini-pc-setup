@@ -4,22 +4,11 @@ mini-pc のセットアップ用 Ansible プレイブックです。
 
 ## 必要なもの
 
-手元の Mac から直接実行します。必要なのは次の3つです。
+手元のマシンから直接実行します。次のものを入れてください（入れ方は問いません）。
 
-- Ansible（`ansible` パッケージ。`community.docker`・`ansible.posix` が同梱されているので、コレクションは別に入れなくてよい）
+- Ansible と、コレクション `community.docker`（`docker_compose_v2` を含む版）・`ansible.posix`（`ansible` パッケージには両方同梱されている）
 - make
 - ssh
-
-make と ssh は macOS に標準で入っています（make が無ければ `xcode-select --install`）。Ansible は [Homebrew](https://brew.sh/) の pipx で入れます。
-
-```bash
-brew install pipx
-pipx ensurepath   # ~/.local/bin を PATH に足す。実行後にターミナルを開き直す
-pipx install --include-deps ansible
-ansible --version
-```
-
-mini-pc の自動デプロイ（後述）も同じく pipx で `ansible` を入れています。apt など別の手段で入る古い Ansible は、使っているモジュール（`community.docker.docker_compose_v2`）を含まないことがあります。
 
 ## 前提条件
 

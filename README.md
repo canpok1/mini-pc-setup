@@ -42,13 +42,13 @@ trading-studio は mini-pc の `127.0.0.1:3000` にだけ公開し、Tailscale S
 
 ログイン前に `make deploy` すると Serve の設定は飛ばされます。ログイン後にもう一度実行してください。スマホからは Tailscale に接続した状態で `https://<mini-pc のマシン名>.<tailnet 名>.ts.net/` を開きます。
 
-**trading-studio は cloudflared 経由で公開しないでください。** インターネットに公開され、ログイン機能の無い画面から誰でも自動取引を操作できてしまいます。
+**trading-studio はインターネットへ公開しないでください。** ログイン機能の無い画面から誰でも自動取引を操作できてしまいます。
 
 ### plant-diary の開き方
 
 plant-diary も trading-studio と同じく mini-pc の `127.0.0.1:8080` にだけ公開し、Tailscale Serve で tailnet 内へ HTTPS で公開します。アカウント作成の API に認証が無いため、LAN やインターネットへは直接出しません。Tailscale に接続した端末で `https://<mini-pc のマシン名>.<tailnet 名>.ts.net:10000/` を開きます。
 
-**plant-diary も cloudflared 経由で公開しないでください。** 誰でもアカウントを作り、Gemini の API キーを使って日記を生成できてしまいます。
+**plant-diary もインターネットへ公開しないでください。** 誰でもアカウントを作り、Gemini の API キーを使って日記を生成できてしまいます。
 
 撮影スクリプト（cron）は `~/src/plant-diary` の clone の中にあるため、この clone は消さないでください。移行前の DB（`~/src/plant-diary/data/plant_log.db`）は、新しい配置で日記が見えることを確かめてから手で消して構いません。Gemini の API キーは `vars/secrets.yml` の `gemini_api_key` から渡します（旧配置の `~/src/plant-diary/.env` はもう読みません）。
 

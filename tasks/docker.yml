@@ -2,12 +2,14 @@
 # 他のタスクはすべてこれが済んでいる前提で動く
 - name: Install base packages
   # クリーンインストール直後でも揃っているはずだが、他のタスクが前提にしているので明示する。
-  # requests は community.docker のモジュール（docker_login・docker_network）が対象ホストで使う
+  # requests は community.docker のモジュール（docker_login・docker_network）が対象ホストで使う。
+  # debian は deb822_repository が対象ホストで使う
   ansible.builtin.apt:
     name:
       - ca-certificates
       - curl
       - git
+      - python3-debian
       - python3-requests
     state: present
     update_cache: yes
@@ -68,9 +70,13 @@
         mode: '0644'
 
     - name: Add Docker apt repository
-      ansible.builtin.apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} stable"
-        filename: docker
+      ansible.builtin.deb822_repository:
+        name: docker
+        types: deb
+        uris: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}"
+        suites: "{{ ansible_facts['distribution_release'] }}"
+        components: stable
+        signed_by: /etc/apt/keyrings/docker.asc
         state: present
 
     - name: Install Docker packages

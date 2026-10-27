@@ -1,0 +1,6 @@
+# 本番と同じ構成を試すマシン。本番と共有している外部のもの（NAS のバックアップ先・健康ログ）に触れる仕組みは入れない（ADR 0010）
+deploy_env: staging
+# 自動検出に任せると見つかった版を使い、毎回警告が出る（host_vars/mini-pc.yml と同じ）
+ansible_python_interpreter: /usr/bin/python3
+# 自動デプロイが追うブランチ。本番より先に試したいときは別のブランチにする
+auto_deploy_branch: main

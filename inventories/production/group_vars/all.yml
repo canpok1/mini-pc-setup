@@ -1,0 +1,4 @@
+# 本番の mini-pc（ADR 0010）
+deploy_env: production
+# 自動デプロイが追うブランチ
+auto_deploy_branch: main

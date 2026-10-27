@@ -1,4 +1,6 @@
-INVENTORY := inventory.ini
+# 適用先の環境。inventories/<環境>/ を使う（ADR 0010）。例: make deploy ENV=staging
+ENV ?= production
+INVENTORY := inventories/$(ENV)/hosts.ini
 
 .PHONY: help ping bootstrap deploy edit-secrets
 

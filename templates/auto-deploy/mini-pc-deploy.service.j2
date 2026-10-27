@@ -11,14 +11,17 @@ Environment=PATH={{ auto_deploy_home }}/.local/bin:/usr/local/sbin:/usr/local/bi
 Environment=ANSIBLE_NOCOLOR=1
 # root だけが読めるファイルを、このサービスにだけ一時的に見せる
 LoadCredential=vault-password:{{ auto_deploy_vault_password_file }}
+# どの環境として適用するか（ADR 0010）。無ければ起動しない
+LoadCredential=deploy-env:{{ auto_deploy_env_file }}
 ExecStart={{ auto_deploy_home }}/.local/bin/ansible-pull \
   --url {{ auto_deploy_repo_url }} \
-  --checkout main \
+  --checkout {{ auto_deploy_branch }} \
   --directory {{ auto_deploy_checkout_dir }} \
   --inventory localhost, \
   --only-if-changed \
   --clean \
   --vault-password-file ${CREDENTIALS_DIRECTORY}/vault-password \
+  --extra-vars @${CREDENTIALS_DIRECTORY}/deploy-env \
   playbook.yml
 TimeoutStartSec=1h
 Nice=10

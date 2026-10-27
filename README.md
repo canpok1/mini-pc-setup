@@ -10,7 +10,7 @@ mini-pc のセットアップ用 Ansible プレイブックです。
 
 ### サーバー側
 
-Ubuntu（または Debian）をインストールし、SSH で接続できて sudo できるユーザーがいれば足ります。Docker・Docker Compose は `make deploy` が Docker 公式の apt リポジトリから入れ、接続ユーザーを `docker` グループに加えます（ADR 0006）。すでに Docker が入っている環境では入れ直しません（`docker compose` が使えなければそこで止まります）。
+Ubuntu（または Debian）をインストールし、SSH で接続できて sudo できるユーザーがいれば足ります。Docker・Docker Compose は `make deploy` が Docker 公式の apt リポジトリから入れ、接続ユーザーを `docker` グループに加えます（ADR 0006）。snap 版の Docker が入っていれば、消してから apt 版を入れます（ADR 0009。その間すべてのコンテナが止まります）。それ以外の方法で Docker が入っている環境では入れ直しません（`docker compose` が使えなければそこで止まります）。
 
 ### GHCR のトークン
 

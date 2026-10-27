@@ -92,7 +92,7 @@ restore で一時的な場所へ取り出してから、手でコピーします
 
 ### 故障後に作り直す
 
-mini-pc を入れ直したときは、同じ `vars/secrets.yml`（`restic_password` と `bifrost_encryption_key` が旧機と同じであること）で[初回セットアップ](setup.md)を行い、その後すぐに上の「復元する」を全サービスに行います。
+mini-pc を入れ直したときは、同じ `vars/secrets.yml`（`restic_password` と `bifrost_encryption_key` が旧機と同じであること）で[初回セットアップ](setup.md)を行い、その後すぐに上の「復元する」を全サービスに行います。Bifrost の管理画面の設定（管理者・API キー・仮想キー）はデータと一緒に戻るので、作り直しません。
 
 - 適用時のバックアップは、データが1つも無い間は取られません
 - 毎日 3:30 の定期バックアップは空のデータでも世代を作ります。**復元を終えるまで `latest` を使わず、故障前の世代を ID で指定してください。** 同じ日の世代は最後の1つしか残らないため、復元が 3:30 をまたぐときは `sudo systemctl stop mini-pc-backup.timer` で止めておき、終わったら `start` で戻します

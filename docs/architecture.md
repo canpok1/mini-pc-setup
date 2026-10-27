@@ -18,11 +18,15 @@
 
 ## 自動デプロイ
 
-main の変更は mini-pc 自身が取り込みます（ADR 0007）。15分ごとに systemd タイマー（`mini-pc-deploy.timer`）が `ansible-pull`（リポジトリを自分で取得し、playbook を自分自身に適用する Ansible のコマンド）を動かし、main に新しいコミットがあったときだけ、`make deploy-production` と同じ処理（NAS へのバックアップ → playbook の適用）を行います。
+main の変更は GitHub Actions（`.github/workflows/deploy.yml`）が本番の mini-pc へ適用します（ADR 0011）。mini-pc には Ansible を置きません。
 
-自動デプロイは本番の mini-pc にだけ入れます（ADR 0010）。`ansible-pull` は inventory を使わないため、環境（`deploy_env: production`）は `host_vars/localhost.yml` で決めています。
+1. main への push、毎日 04:00 JST、手動実行のいずれかでワークフローが動く
+2. GitHub のランナーが Tailscale の一時ノード（`tag:ci`）として tailnet に入る。GitHub が発行する短命トークンで認証するので、GitHub に Tailscale のシークレットは置かない
+3. Tailscale SSH（tailnet 経由の ssh を、鍵ではなく Tailscale の ACL で許可する仕組み）で mini-pc に入り、`make deploy-production` と同じ処理（NAS へのバックアップ → playbook の適用）を行う
 
-自動実行ではパスワードを入力できないため、接続ユーザーの sudo はパスワード無しにし、vault のパスワードは `/etc/mini-pc-deploy/vault-password`（root だけが読める）に置いています。
+秘密と接続先は GitHub の Environment `production` に置き、使えるブランチを main に絞っています。fork の PR や他のブランチからは読めません。自動実行ではパスワードを入力できないため、本番の接続ユーザーの sudo はパスワード無しにしています。staging には自動デプロイを入れません（ADR 0010）。
+
+Actions のログは誰でも読めます。秘密を扱うタスクには `no_log: true` を付けてください。
 
 ## コンテナの自動更新
 

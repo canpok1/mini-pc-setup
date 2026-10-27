@@ -104,6 +104,8 @@
     registry_url: ghcr.io
     username: "USERNAME"
     password: "{{ ghcr_token }}"
+  # 自動デプロイのログは公開リポジトリの Actions で誰でも読める（ADR 0011）
+  no_log: true
 
 - name: Add execute permission to capture_auto.sh
   ansible.builtin.file:

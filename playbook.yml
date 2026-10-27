@@ -7,15 +7,15 @@
 
   tasks:
   - name: Check required secrets
-    # 足りないと途中のタスクで分かりにくく失敗する。どちらも docs/setup.md の手順で make edit-secrets から足す
+    # 足りないと途中のタスクで分かりにくく失敗する。docs/setup.md の手順で make edit-secrets から足す
     ansible.builtin.assert:
       that:
         - ghcr_token is defined
-        - deploy_vault_password is defined
-      fail_msg: "vars/secrets.yml に ghcr_token と deploy_vault_password を追加してください（docs/setup.md の「GHCR のトークン」「自動デプロイ」）。"
+      fail_msg: "vars/secrets.yml に ghcr_token を追加してください（docs/setup.md の「GHCR のトークン」）。"
 
   - name: Check deploy environment
-    # 手元からは inventories/<環境>/group_vars/all.yml、自動デプロイでは host_vars/localhost.yml で決まる（ADR 0010）
+    # inventories/<環境>/group_vars/all.yml で決まる（ADR 0010）。
+    # host_vars/localhost.yml は旧自動デプロイ（ansible-pull）が最後に一度この変更を適用するときだけ使う
     ansible.builtin.assert:
       that:
         - deploy_env is defined
@@ -59,7 +59,7 @@
   - name: Setup watchtower
     ansible.builtin.import_tasks: tasks/watchtower.yml
 
-  - name: Setup auto-deploy
-    ansible.builtin.import_tasks: tasks/auto-deploy.yml
-    # サーバーに Ansible を入れるのは本番だけにする。staging は手元から make deploy-staging で入れる（ADR 0010）
+  - name: Accept deploys from GitHub Actions
+    ansible.builtin.import_tasks: tasks/remote-deploy.yml
+    # 自動デプロイは本番だけ。staging は手元から make deploy-staging で入れる（ADR 0010, 0011）
     when: deploy_env == 'production'

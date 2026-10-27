@@ -68,21 +68,49 @@ NAS の IP や共有名、世代数は `tasks/backup.yml` の変数で変えら�
 3. 同じ画面で「Enforce Virtual Keys on Inference」が有効になっていることを確かめます（仮想キーの無い推論リクエストを断る設定）。
 4. Gemini などの API キーを登録し、アプリごとに仮想キーを発行します。
 
-## 自動デプロイ
-
-- `deploy_vault_password`: vault のパスワード（`make deploy-production` で入力しているもの）と同じ値
-
-mini-pc の `/etc/mini-pc-deploy/vault-password`（root だけが読める）へ書き出され、自動デプロイが `vars/secrets.yml` を開くのに使います。仕組みは[仕組み](architecture.md#自動デプロイ)を参照してください。
-
 ## 適用する
 
 ```bash
 make bootstrap-production
 ```
 
-sudo と vault のパスワードを聞きます。一度通ると接続ユーザーの sudo がパスワード無しになり（自動デプロイでは入力できないため。ADR 0007）、以降の手元からの実行は `make deploy-production`（vault のパスワードだけを聞く）で足ります。
+sudo と vault のパスワードを聞きます。一度通ると接続ユーザーの sudo がパスワード無しになり（自動デプロイでは入力できないため。ADR 0011）、以降の手元からの実行は `make deploy-production`（vault のパスワードだけを聞く）で足ります。
 
 適用の最初に NAS へのバックアップを1回取り、失敗したらそこで止まります。
+
+## 自動デプロイ
+
+main の変更を GitHub Actions から本番へ適用するための設定です（仕組みは[仕組み](architecture.md#自動デプロイ)）。Tailscale と GitHub の画面で行います。mini-pc 側の Tailscale SSH は playbook が有効にするので、先に Tailscale にログインして `make deploy-production` を通しておきます。
+
+### Tailscale
+
+1. Access controls の JSON に次を足す。`<user>` は mini-pc のログインユーザー
+   - `tagOwners` に `"tag:ci": ["autogroup:admin"]` と `"tag:mini-pc": ["autogroup:admin"]`
+   - 通信の許可に `tag:ci` → `tag:mini-pc:22`。既存の許可が `src: ["*"]` なら `["autogroup:member"]` に絞る（`tag:ci` がどこへでも届かないように）
+   - `ssh` に次の2行。2行目は自分の端末から tailnet 経由で入るためのもの（タグを付けると既定のルールが効かなくなる）
+     ```json
+     {"action": "accept", "src": ["tag:ci"], "dst": ["tag:mini-pc"], "users": ["<user>"]},
+     {"action": "accept", "src": ["autogroup:member"], "dst": ["tag:mini-pc"], "users": ["<user>"]}
+     ```
+2. Machines で mini-pc に `tag:mini-pc` を付ける（1 の後に行う）
+3. Settings → Trust credentials で OpenID Connect の認証情報を作る
+   - Issuer: GitHub
+   - Subject: `repo:canpok1/mini-pc-setup:environment:production`
+   - Scope: Auth Keys の書き込み、タグ: `tag:ci`
+
+### GitHub
+
+リポジトリの Settings → Environments に `production` を作り、Deployment branches を `main` だけにします。そこへ次を登録します。
+
+| 種類 | 名前 | 値 |
+|------|------|----|
+| Secret | `TS_OAUTH_CLIENT_ID` | Tailscale の 3 で発行された Client ID |
+| Secret | `TS_AUDIENCE` | 同じく Audience |
+| Secret | `ANSIBLE_VAULT_PASSWORD` | vault のパスワード |
+| Variable | `DEPLOY_HOST` | mini-pc の MagicDNS 名（`mini-pc.<tailnet 名>.ts.net`） |
+| Variable | `DEPLOY_USER` | mini-pc のログインユーザー |
+
+Actions の画面で Deploy を手動実行し、通ることを確かめます。
 
 ## staging 環境
 

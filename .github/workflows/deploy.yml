@@ -1,0 +1,65 @@
+# main の変更を本番の mini-pc へ適用する（ADR 0011）。
+# GitHub のランナーが Tailscale の一時ノードとして tailnet に入り、Tailscale SSH で mini-pc に入って playbook を流す
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 毎日 04:00 JST。手で入れた変更の巻き戻しと、push での実行が失敗したときの取り直しを兼ねる。
+    # バックアップ（03:30）の後、OS 更新の再起動（05:00）の前に置く
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+
+# 同時に2つ流さない。実行中のものは止めずに待たせる
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Secrets はこの Environment にだけ置き、使えるブランチを main に絞る。fork の PR や他のブランチからは読めない
+    environment: production
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      # Tailscale へ GitHub の短命トークンで入る（Workload identity federation）
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Connect to tailnet
+        uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4.3.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
+          # 一時ノードが mini-pc に見えるまで待つ
+          ping: ${{ vars.DEPLOY_HOST }}
+
+      - name: Install Ansible
+        # ansible パッケージには community.docker と ansible.posix が同梱されている
+        run: pipx install --include-deps ansible
+
+      - name: Deploy
+        env:
+          VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          # 接続相手は Tailscale が鍵で確かめている。使い捨てのランナーには known_hosts が無い
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
+        # ログは誰でも読める。秘密を扱うタスクは no_log にしてある
+        run: |
+          vault_password_file="$RUNNER_TEMP/vault-password"
+          trap 'rm -f "$vault_password_file"' EXIT
+          (umask 077 && printf '%s' "$VAULT_PASSWORD" > "$vault_password_file")
+          ansible-playbook -i inventories/production/hosts.ini playbook.yml \
+            --vault-password-file "$vault_password_file" \
+            -e "ansible_host=$DEPLOY_HOST" \
+            -e "ansible_user=$DEPLOY_USER"

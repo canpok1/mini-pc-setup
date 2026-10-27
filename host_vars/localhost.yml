@@ -1,5 +1,6 @@
-# mini-pc 自身が ansible-pull で自分に適用するときの接続設定（ADR 0007）。
-# 手元からの make deploy-<環境> は inventories/ の各ホストを使うため、ここは読まれない
+# 旧自動デプロイ（ansible-pull、ADR 0007）が、自身を撤去する変更（ADR 0011）を最後に一度適用するときの接続設定。
+# 撤去が本番に反映されたら、このファイルは消してよい。
+# 手元や GitHub Actions からの実行は inventories/ の各ホストを使うため、ここは読まれない
 ansible_connection: local
 # ansible-pull は pipx の venv で動く。モジュールは python3-requests を入れた OS の Python で動かす
 ansible_python_interpreter: /usr/bin/python3

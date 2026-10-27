@@ -7,5 +7,16 @@ set -eu
 snapshot_id=$(date -u -d '{{ os_update_delay_days }} days ago' +%Y%m%dT%H%M%SZ)
 printf 'APT::Snapshot "%s";\n' "$snapshot_id" > /etc/apt/apt.conf.d/51mini-pc-snapshot
 
-# 失敗したらこのスクリプトごと失敗させ、その日の更新を止める
-apt-get update -q
+# snapshot.ubuntu.com は一時的に 503 を返すことがある。apt-get update は取得に失敗しても警告だけで成功扱いにするため、
+# --error-on=any で失敗として扱い、間を空けて取り直す
+attempt=1
+while ! apt-get update -q --error-on=any; do
+    if [ "$attempt" -ge {{ os_update_snapshot_attempts }} ]; then
+        # 取れなかった時点の一覧は無いので、Ubuntu 公式の通常の更新は候補に入らない（新しい版が待たずに入ることは無い）。
+        # セキュリティ修正と外部リポジトリの更新だけは進める
+        echo "snapshot の一覧を取得できませんでした。今日は Ubuntu 公式の通常の更新を見送ります" >&2
+        exit 0
+    fi
+    attempt=$((attempt + 1))
+    sleep {{ os_update_snapshot_retry_interval }}
+done

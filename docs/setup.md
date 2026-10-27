@@ -1,6 +1,6 @@
 # 初回セットアップ
 
-クリーンインストールした mini-pc に初めて適用するまでの手順です。秘密情報はすべて `make edit-secrets` で `vars/secrets.yml` に書きます。全部そろえてから `make bootstrap` を実行してください。
+クリーンインストールした mini-pc に初めて適用するまでの手順です。秘密情報はすべて `make edit-secrets` で `vars/secrets.yml` に書きます。全部そろえてから `make bootstrap-production` を実行してください。
 
 ## サーバー側の前提
 
@@ -39,10 +39,10 @@ trading-studio・plant-diary・Bifrost の管理画面は mini-pc の `127.0.0.1
 
 Tailscale の導入と Serve の設定はプレイブックが行いますが、次の2つは手動で行ってください。
 
-1. `make bootstrap` の前に、Tailscale の管理画面で MagicDNS と HTTPS 証明書を有効にする
-2. `make bootstrap` の後に、mini-pc で `sudo tailscale up` を実行してログインする（Tailscale はプレイブックが入れるため。認証用の鍵は secrets に置かない）
+1. `make bootstrap-production` の前に、Tailscale の管理画面で MagicDNS と HTTPS 証明書を有効にする
+2. `make bootstrap-production` の後に、mini-pc で `sudo tailscale up` を実行してログインする（Tailscale はプレイブックが入れるため。認証用の鍵は secrets に置かない）
 
-ログイン前の実行では Serve の設定は飛ばされます。ログイン後に手元から `make deploy` をもう一度実行してください。
+ログイン前の実行では Serve の設定は飛ばされます。ログイン後に手元から `make deploy-production` をもう一度実行してください。
 
 ## NAS へのバックアップ
 
@@ -70,16 +70,28 @@ NAS の IP や共有名、世代数は `tasks/backup.yml` の変数で変えら�
 
 ## 自動デプロイ
 
-- `deploy_vault_password`: vault のパスワード（`make deploy` で入力しているもの）と同じ値
+- `deploy_vault_password`: vault のパスワード（`make deploy-production` で入力しているもの）と同じ値
 
 mini-pc の `/etc/mini-pc-deploy/vault-password`（root だけが読める）へ書き出され、自動デプロイが `vars/secrets.yml` を開くのに使います。仕組みは[仕組み](architecture.md#自動デプロイ)を参照してください。
 
 ## 適用する
 
 ```bash
-make bootstrap
+make bootstrap-production
 ```
 
-sudo と vault のパスワードを聞きます。一度通ると接続ユーザーの sudo がパスワード無しになり（自動デプロイでは入力できないため。ADR 0007）、以降の手元からの実行は `make deploy`（vault のパスワードだけを聞く）で足ります。
+sudo と vault のパスワードを聞きます。一度通ると接続ユーザーの sudo がパスワード無しになり（自動デプロイでは入力できないため。ADR 0007）、以降の手元からの実行は `make deploy-production`（vault のパスワードだけを聞く）で足ります。
 
 適用の最初に NAS へのバックアップを1回取り、失敗したらそこで止まります。
+
+## staging 環境
+
+VM や別の Linux 端末に、本番と同じ構成を作って動作を確かめられます（ADR 0010）。秘密情報は本番と同じ `vars/secrets.yml` を使います。
+
+1. `~/.ssh/config` に `Host staging` で検証機への接続設定を書く（`mini-pc` と同じ形）
+2. `make ping-staging` で接続を確かめ、`make bootstrap-staging` で適用する
+3. Tailscale を使うなら、検証機でも `sudo tailscale up` してから `make deploy-staging` をもう一度実行する
+
+staging では NAS へのバックアップと health-connect-converter を入れません。どちらも本番と同じ NAS・スプレッドシートを読み書きするためです。自動デプロイも入れません（サーバーに Ansible を入れない）。変更は手元から `make deploy-staging` で入れます。Gemini の API キー（plant-diary）は本番と共有なので、使った分だけ同じ枠を消費します。
+
+**`inventories/staging/hosts.ini` に本番のホストを書かないでください。** 本番の mini-pc に staging の設定が適用され、デプロイ前のバックアップが飛ばされます。

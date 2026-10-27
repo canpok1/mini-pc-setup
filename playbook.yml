@@ -14,11 +14,21 @@
         - deploy_vault_password is defined
       fail_msg: "vars/secrets.yml に ghcr_token と deploy_vault_password を追加してください（docs/setup.md の「GHCR のトークン」「自動デプロイ」）。"
 
+  - name: Check deploy environment
+    # 手元からは inventories/<環境>/group_vars/all.yml、自動デプロイでは host_vars/localhost.yml で決まる（ADR 0010）
+    ansible.builtin.assert:
+      that:
+        - deploy_env is defined
+        - deploy_env in ['production', 'staging']
+      fail_msg: "deploy_env が production か staging ではありません。手元からは make deploy-production か make deploy-staging で実行してください。"
+
   - name: Setup docker
     ansible.builtin.import_tasks: tasks/docker.yml
 
   - name: Back up service data to NAS
     ansible.builtin.import_tasks: tasks/backup.yml
+    # 本番と同じ NAS の restic リポジトリへ書き、本番の世代を消しうるため staging では入れない（ADR 0010）
+    when: deploy_env == 'production'
 
   - name: Remove cloudflared
     ansible.builtin.import_tasks: tasks/cloudflared.yml
@@ -28,6 +38,8 @@
 
   - name: Setup health-connect-converter
     ansible.builtin.import_tasks: tasks/health-connect-converter.yml
+    # 本番と同じ Drive フォルダ・スプレッドシートを読み書きするため staging では入れない（ADR 0010）
+    when: deploy_env == 'production'
 
   - name: Setup trading-studio
     ansible.builtin.import_tasks: tasks/trading-studio.yml
@@ -49,3 +61,5 @@
 
   - name: Setup auto-deploy
     ansible.builtin.import_tasks: tasks/auto-deploy.yml
+    # サーバーに Ansible を入れるのは本番だけにする。staging は手元から make deploy-staging で入れる（ADR 0010）
+    when: deploy_env == 'production'

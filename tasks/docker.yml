@@ -36,7 +36,7 @@
 
     - name: Fail if snap Docker has named volumes
       ansible.builtin.fail:
-        msg: "snap 版 Docker に名前付きボリュームがあります（{{ docker_snap_volumes.stdout_lines | join(', ') }}）。snap を消すと失われるため入れ替えを止めました。中身を退避してから、もう一度 make deploy してください。"
+        msg: "snap 版 Docker に名前付きボリュームがあります（{{ docker_snap_volumes.stdout_lines | join(', ') }}）。snap を消すと失われるため入れ替えを止めました。中身を退避してから、もう一度 make deploy-<環境> してください。"
       when: docker_snap_volumes.stdout_lines | length > 0
 
     - name: Remove snap Docker
@@ -106,7 +106,7 @@
 
 - name: Fail if Docker Compose plugin is missing
   ansible.builtin.fail:
-    msg: "Docker は入っていますが `docker compose` が使えません。Docker を入れた方法に合わせて Compose プラグイン（v2）を入れてから、もう一度 make deploy してください。"
+    msg: "Docker は入っていますが `docker compose` が使えません。Docker を入れた方法に合わせて Compose プラグイン（v2）を入れてから、もう一度 make deploy-<環境> してください。"
   when: docker_compose_version.rc != 0
 
 - name: Create docker group

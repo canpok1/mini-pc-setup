@@ -1,5 +1,8 @@
 # mini-pc 自身が ansible-pull で自分に適用するときの接続設定（ADR 0007）。
-# 手元からの make deploy は inventory.ini の mini-pc を使うため、ここは読まれない
+# 手元からの make deploy-<環境> は inventories/ の各ホストを使うため、ここは読まれない
 ansible_connection: local
 # ansible-pull は pipx の venv で動く。モジュールは python3-requests を入れた OS の Python で動かす
 ansible_python_interpreter: /usr/bin/python3
+# ansible-pull は inventory を使わないため、ここで環境を決める。
+# 自動デプロイは本番の mini-pc にだけ入れるので production 固定（ADR 0010）
+deploy_env: production

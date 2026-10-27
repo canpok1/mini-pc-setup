@@ -11,7 +11,7 @@ systemctl list-timers mini-pc-deploy.timer     # 次回の実行時刻
 systemctl status mini-pc-deploy                # 前回の結果
 journalctl -u mini-pc-deploy                   # ログ
 sudo systemctl start mini-pc-deploy            # 今すぐ確認（変更が無ければ何もしない）
-sudo systemctl disable --now mini-pc-deploy.timer   # 自動デプロイを止める（次の make deploy で再開）
+sudo systemctl disable --now mini-pc-deploy.timer   # 自動デプロイを止める（次の make deploy-production で再開）
 ```
 
 反映されないときは、上の `status` と `journalctl` で失敗した段階を見ます。
@@ -22,9 +22,11 @@ sudo systemctl disable --now mini-pc-deploy.timer   # 自動デプロイを止�
 
 ### main 以外のブランチを試す
 
+本番に入れる前に試すなら、手元でブランチを checkout して [staging 環境](setup.md#staging-環境)へ `make deploy-staging` するのが安全です。本番の mini-pc で試すときは次の手順です。
+
 1. mini-pc で `sudo systemctl disable --now mini-pc-deploy.timer` を実行し、自動デプロイを止める
-2. 手元でブランチを checkout して `make deploy`。**`make deploy` は自動デプロイのタイマーを再び有効にする**ので、試している間に main へ入った変更で上書きされたくなければ、1 をもう一度実行する
-3. 試し終わったら、手元で main を checkout して `make deploy`（タイマーも有効に戻る）
+2. 手元でブランチを checkout して `make deploy-production`。**`make deploy-production` は自動デプロイのタイマーを再び有効にする**ので、試している間に main へ入った変更で上書きされたくなければ、1 をもう一度実行する
+3. 試し終わったら、手元で main を checkout して `make deploy-production`（タイマーも有効に戻る）
 
 ## サービスを操作する
 
@@ -45,11 +47,11 @@ compose のサービス名は `bifrost`・`trading-studio`・`plant-diary` で�
 
 1. 端末が Tailscale に接続しているか、URL のポートが合っているか（[README](../README.md#動かすもの)）
 2. `docker compose ps` でコンテナが動いているか。止まっていれば `docker compose logs` で原因を見て `restart`
-3. `sudo tailscale serve status` に該当のポートがあるか。無ければ `sudo tailscale up` 済みかを確かめ、手元で `make deploy`
+3. `sudo tailscale serve status` に該当のポートがあるか。無ければ `sudo tailscale up` 済みかを確かめ、手元で `make deploy-production`
 
 ## 秘密情報を変える
 
-手元で `make edit-secrets` して編集し、main へ入れるか `make deploy` します。
+手元で `make edit-secrets` して編集し、main へ入れるか `make deploy-production` します。
 
 Gemini の API キーを変えるときは、2か所を更新してから古いキーを無効にします。plant-diary はまだ Bifrost を経由せず、`gemini_api_key` を直接使っているためです。
 
@@ -60,7 +62,7 @@ vault のパスワードを変えるときは、次の順に行います。自�
 
 1. 手元で `ansible-vault rekey vars/secrets.yml`
 2. `make edit-secrets` で `deploy_vault_password` を新しいパスワードにする
-3. 手元で `make deploy`（mini-pc のパスワードファイルが新しい値になる）
+3. 手元で `make deploy-production`（mini-pc のパスワードファイルが新しい値になる）
 4. すぐに main へ入れる（3 と 4 の間に main へ他の変更が入ると、その回の自動デプロイは失敗する）
 5. mini-pc で `sudo systemctl start mini-pc-deploy` と `journalctl -u mini-pc-deploy` で成功を確かめる
 

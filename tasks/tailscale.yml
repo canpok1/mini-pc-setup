@@ -52,7 +52,7 @@
 - name: Show how to log in to Tailscale
   # 認証用の鍵をsecretsに置かないため、初回のログインは手動で行う
   ansible.builtin.debug:
-    msg: "Tailscale にログインしていないため Serve の設定を飛ばしました。mini-pc で `sudo tailscale up` を実行してログインし、もう一度 make deploy してください。"
+    msg: "Tailscale にログインしていないため Serve の設定を飛ばしました。mini-pc で `sudo tailscale up` を実行してログインし、もう一度 make deploy-<環境> してください。"
   when: not tailscale_logged_in
 
 - name: Check Tailscale Serve config

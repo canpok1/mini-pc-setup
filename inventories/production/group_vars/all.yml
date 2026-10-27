@@ -1,0 +1,2 @@
+# 本番の mini-pc（ADR 0010）
+deploy_env: production

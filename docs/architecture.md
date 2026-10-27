@@ -18,7 +18,9 @@
 
 ## 自動デプロイ
 
-main の変更は mini-pc 自身が取り込みます（ADR 0007）。15分ごとに systemd タイマー（`mini-pc-deploy.timer`）が `ansible-pull`（リポジトリを自分で取得し、playbook を自分自身に適用する Ansible のコマンド）を動かし、main に新しいコミットがあったときだけ、`make deploy` と同じ処理（NAS へのバックアップ → playbook の適用）を行います。
+main の変更は mini-pc 自身が取り込みます（ADR 0007）。15分ごとに systemd タイマー（`mini-pc-deploy.timer`）が `ansible-pull`（リポジトリを自分で取得し、playbook を自分自身に適用する Ansible のコマンド）を動かし、main に新しいコミットがあったときだけ、`make deploy-production` と同じ処理（NAS へのバックアップ → playbook の適用）を行います。
+
+自動デプロイは本番の mini-pc にだけ入れます（ADR 0010）。`ansible-pull` は inventory を使わないため、環境（`deploy_env: production`）は `host_vars/localhost.yml` で決めています。
 
 自動実行ではパスワードを入力できないため、接続ユーザーの sudo はパスワード無しにし、vault のパスワードは `/etc/mini-pc-deploy/vault-password`（root だけが読める）に置いています。
 

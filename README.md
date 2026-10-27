@@ -25,7 +25,7 @@
 
 ## クイックスタート
 
-1. `~/.ssh/config` に mini-pc への接続設定を書き、`make ping` で接続を確かめます。
+1. `~/.ssh/config` に mini-pc への接続設定を書き、`make ping-production` で接続を確かめます。
 
     ```
     Host mini-pc
@@ -35,9 +35,9 @@
     ```
 
 2. [初回セットアップ](docs/setup.md)に沿って、秘密情報（`make edit-secrets`）と外部サービスを準備します。
-3. `make bootstrap` を実行します（sudo と vault のパスワードを聞きます）。
+3. `make bootstrap-production` を実行します（sudo と vault のパスワードを聞きます）。
 
-以降は main へのマージが15分以内に mini-pc へ反映されます。main 以外のブランチを試すときは手元から `make deploy` します。コマンドの一覧は `make help` で見られます。
+以降は main へのマージが15分以内に mini-pc へ反映されます。main 以外のブランチを試すときは手元から `make deploy-production` します。本番と同じ構成を別のマシンで試すときは [staging 環境](docs/setup.md#staging-環境)を使います。コマンドの一覧は `make help` で見られます。
 
 ## ドキュメント
 

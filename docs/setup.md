@@ -68,21 +68,98 @@ NAS の IP や共有名、世代数は `tasks/backup.yml` の変数で変えら�
 3. 同じ画面で「Enforce Virtual Keys on Inference」が有効になっていることを確かめます（仮想キーの無い推論リクエストを断る設定）。
 4. Gemini などの API キーを登録し、アプリごとに仮想キーを発行します。
 
-## 自動デプロイ
-
-- `deploy_vault_password`: vault のパスワード（`make deploy-production` で入力しているもの）と同じ値
-
-mini-pc の `/etc/mini-pc-deploy/vault-password`（root だけが読める）へ書き出され、自動デプロイが `vars/secrets.yml` を開くのに使います。仕組みは[仕組み](architecture.md#自動デプロイ)を参照してください。
-
 ## 適用する
 
 ```bash
 make bootstrap-production
 ```
 
-sudo と vault のパスワードを聞きます。一度通ると接続ユーザーの sudo がパスワード無しになり（自動デプロイでは入力できないため。ADR 0007）、以降の手元からの実行は `make deploy-production`（vault のパスワードだけを聞く）で足ります。
+sudo と vault のパスワードを聞きます。一度通ると接続ユーザーの sudo がパスワード無しになり（自動デプロイでは入力できないため。ADR 0011）、以降の手元からの実行は `make deploy-production`（vault のパスワードだけを聞く）で足ります。
 
 適用の最初に NAS へのバックアップを1回取り、失敗したらそこで止まります。
+
+## 自動デプロイ
+
+main の変更を GitHub Actions から本番へ適用するための設定です（仕組みは[仕組み](architecture.md#自動デプロイ)）。Tailscale の管理画面と GitHub の Settings で行い、最後に手元から1回デプロイします。
+
+### 1. Tailscale の ACL を編集する
+
+管理画面（login.tailscale.com/admin）の **Access controls** を開き、JSON エディタで次の3か所を足す・直して保存します。`<user>` は mini-pc のログインユーザーに置き換えます。
+
+```jsonc
+{
+  // タグを作り、管理者だけが付けられるようにする
+  "tagOwners": {
+    "tag:ci":      ["autogroup:admin"],   // GitHub Actions の一時ノード
+    "tag:mini-pc": ["autogroup:admin"]    // 本番の mini-pc
+  },
+
+  // 通信の許可。既存の src "*" を autogroup:member に絞り、CI の行を足す
+  "grants": [
+    {"src": ["autogroup:member"], "dst": ["*"], "ip": ["*"]},
+    {"src": ["tag:ci"], "dst": ["tag:mini-pc"], "ip": ["tcp:22"]}
+  ],
+
+  // Tailscale SSH の許可。既存の行は残し、2行足す
+  "ssh": [
+    {"action": "accept", "src": ["tag:ci"],           "dst": ["tag:mini-pc"], "users": ["<user>"]},
+    {"action": "accept", "src": ["autogroup:member"], "dst": ["tag:mini-pc"], "users": ["<user>"]}
+  ]
+}
+```
+
+- 通信の許可が `grants` ではなく `acls` で書かれているときは、`{"action": "accept", "src": ["autogroup:member"], "dst": ["*:*"]}` と `{"action": "accept", "src": ["tag:ci"], "dst": ["tag:mini-pc:22"]}` の形で書く
+- 既存の `src: ["*"]` を残すと、CI の一時ノードから tailnet のどこへでも届いてしまう
+- `ssh` の2行目は、自分の端末から tailnet 経由で mini-pc に入るためのもの。タグを付けると mini-pc はアカウントの持ち物ではなくなり、既定のルール（`autogroup:self`）が効かなくなる
+- `src` を `autogroup:member` に絞ると、次のものは mini-pc へ届かなくなる。使っているなら grants に許可を足す
+  - Share 機能で mini-pc を共有している別アカウントの人
+  - タグ付きの別の端末からの接続
+  - mini-pc 自身から tailnet 上の他の端末への接続（外からの接続への応答には影響しない）
+- 自分の端末から Web サービス（Tailscale Serve）を使う分には影響しない。Funnel（インターネットへの公開）と LAN からの直接アクセスも ACL とは関係ない
+
+### 2. mini-pc にタグを付ける
+
+**Machines** で mini-pc の「…」→ **Edit ACL tags** から `tag:mini-pc` を付けます。タグは 1 で作るので、1 の後に行います。MagicDNS 名と Tailscale Serve の URL は変わりません。タグ付きの端末は鍵の期限切れが無効になります。
+
+### 3. Tailscale に GitHub を信頼させる
+
+**Settings → Trust credentials** で OpenID Connect の認証情報を作ります。GitHub が発行する短命のトークンで入る方式（Workload identity federation）で、GitHub に Tailscale のシークレットを置きません。
+
+| 項目 | 値 |
+|------|----|
+| Issuer | GitHub |
+| Subject | `repo:canpok1/mini-pc-setup:environment:production`（この Environment のジョブだけが入れる） |
+| Scope | Auth Keys の書き込み |
+| Tags | `tag:ci` |
+
+作ると **Client ID** と **Audience** が表示されるので控えます。
+
+### 4. GitHub の Environment を作る
+
+リポジトリの **Settings → Environments → New environment** で `production` を作ります。
+
+1. **Deployment branches and tags** を「Selected branches and tags」にし、`main` を追加する。main 以外のブランチや fork の PR からは、下の Secrets を読めなくなる
+2. 次を登録する
+
+| 種類 | 名前 | 値 |
+|------|------|----|
+| Secret | `TS_OAUTH_CLIENT_ID` | 3 の Client ID |
+| Secret | `TS_AUDIENCE` | 3 の Audience |
+| Secret | `ANSIBLE_VAULT_PASSWORD` | vault のパスワード |
+| Variable | `DEPLOY_HOST` | mini-pc の MagicDNS 名（`mini-pc.<tailnet 名>.ts.net`） |
+| Variable | `DEPLOY_USER` | mini-pc のログインユーザー |
+
+あわせて **Settings → Actions → General** の「Fork pull request workflows from outside collaborators」が「Require approval for all outside collaborators」になっていることを確かめます。
+
+### 5. 手元から1回デプロイする
+
+mini-pc の Tailscale SSH は playbook が有効にします（`tasks/remote-deploy.yml`）。Actions はこれが無いと mini-pc に入れないため、最初の1回は手元から `make deploy-production` します。終わったら mini-pc で確かめます。
+
+```bash
+sudo tailscale debug prefs | grep RunSSH   # "RunSSH": true なら有効
+```
+
+その後、Actions の Deploy を「Run workflow」で手動実行（main のみ）し、通ることを確かめます。
 
 ## staging 環境
 

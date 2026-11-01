@@ -1,0 +1,77 @@
+# main の変更は GitHub Actions から Tailscale SSH で入って適用する（ADR 0011）。
+# mini-pc には受け口（Tailscale SSH と sudo）だけを置き、Ansible は置かない
+- name: Allow login user to sudo without password
+  # 外からの自動実行ではパスワードを入力できない。become は任意のコマンドを実行するため、コマンドで絞っても意味がない。
+  # ログインユーザーは docker グループに入っており、もともと root と同等の権限を持つ
+  ansible.builtin.copy:
+    content: "{{ ansible_facts['user_id'] }} ALL=(ALL) NOPASSWD: ALL\n"
+    dest: /etc/sudoers.d/mini-pc-deploy
+    owner: root
+    group: root
+    mode: '0440'
+    validate: visudo -cf %s
+  become: yes
+
+- name: Check Tailscale SSH
+  ansible.builtin.command: tailscale debug prefs
+  register: tailscale_prefs
+  changed_when: false
+  become: yes
+  when: tailscale_logged_in
+
+- name: Enable Tailscale SSH
+  # tailnet 経由の 22 番は tailscaled が受け、誰が入れるかは Tailscale の ACL で決まる。
+  # LAN からの ssh はこれまでどおり OpenSSH が受ける
+  ansible.builtin.command: tailscale set --ssh
+  become: yes
+  when:
+    - tailscale_logged_in
+    - not (tailscale_prefs.stdout | from_json).RunSSH | default(false)
+
+# ここから下は ansible-pull による旧自動デプロイ（ADR 0007）の撤去
+- name: Stop ansible-pull timer
+  ansible.builtin.systemd_service:
+    name: mini-pc-deploy.timer
+    enabled: false
+    state: stopped
+  become: yes
+  failed_when: false
+
+- name: Remove ansible-pull files
+  # mini-pc-deploy.service は止めない。ansible-pull が最後にこの変更を適用している最中でありうる
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/mini-pc-deploy.timer
+    - /etc/systemd/system/mini-pc-deploy.service
+    - /etc/mini-pc-deploy
+  become: yes
+  register: legacy_auto_deploy_files
+
+- name: Reload systemd after removing ansible-pull units
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: yes
+  when: legacy_auto_deploy_files.changed
+
+- name: Remove ansible-pull checkout
+  # ansible-pull で動いている最中は、この playbook 自身がここにある
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/.local/share/mini-pc-deploy"
+    state: absent
+  when: ansible_connection | default('ssh') != 'local'
+
+- name: Uninstall Ansible installed for ansible-pull
+  # ansible-pull で動いている最中に消すと壊れるため、外から入ったときだけ消す
+  ansible.builtin.command: pipx uninstall ansible
+  args:
+    removes: "{{ ansible_facts['env']['HOME'] }}/.local/bin/ansible-pull"
+  when: ansible_connection | default('ssh') != 'local'
+
+- name: Uninstall pipx
+  ansible.builtin.apt:
+    name: pipx
+    state: absent
+  become: yes
+  when: ansible_connection | default('ssh') != 'local'

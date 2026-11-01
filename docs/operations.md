@@ -1,32 +1,28 @@
 # 運用
 
-特に断りがなければ、mini-pc 上で実行するコマンドです。どの仕組みも失敗しても通知は来ないため、ここにあるコマンドで確認します。
+特に断りがなければ、mini-pc 上で実行するコマンドです。自動デプロイ以外は失敗しても通知が来ないため、ここにあるコマンドで確認します。
 
 ## 変更を反映する
 
-main へマージすると、15分以内に mini-pc が取り込んで適用します（[自動デプロイ](architecture.md#自動デプロイ)）。**PR のマージがそのままデプロイになります。** 壊れた変更を入れたら revert して main へ入れてください。
+main へマージすると、GitHub Actions の Deploy がすぐに本番へ適用します（[自動デプロイ](architecture.md#自動デプロイ)）。**PR のマージがそのままデプロイになります。** 壊れた変更を入れたら revert して main へ入れてください。毎日 04:00 JST にも同じ内容を適用し直します。
 
-```bash
-systemctl list-timers mini-pc-deploy.timer     # 次回の実行時刻
-systemctl status mini-pc-deploy                # 前回の結果
-journalctl -u mini-pc-deploy                   # ログ
-sudo systemctl start mini-pc-deploy            # 今すぐ確認（変更が無ければ何もしない）
-sudo systemctl disable --now mini-pc-deploy.timer   # 自動デプロイを止める（次の make deploy-production で再開）
-```
+結果は GitHub の Actions タブで見ます。失敗すると GitHub から通知メールが届きます。今すぐ流し直すときは、Actions の Deploy から「Run workflow」を押します。自動デプロイを止めるときは、Actions の Deploy の「…」から「Disable workflow」を選びます。
 
-反映されないときは、上の `status` と `journalctl` で失敗した段階を見ます。
+反映されないときは、Actions のログで失敗した段階を見ます。
 
-- バックアップで止まっている: `sudo journalctl -u mini-pc-backup` で原因を見る（NAS 側は[初回セットアップ](setup.md#nas-へのバックアップ)の設定を確認）
-- `vars/secrets.yml` を開けない: vault のパスワードと `deploy_vault_password` がずれている（[秘密情報を変える](#秘密情報を変える)）
+- Connect to tailnet で止まっている: Tailscale の ACL・タグ・信頼する認証情報と、Environment の `TS_OAUTH_CLIENT_ID`・`TS_AUDIENCE`（[初回セットアップ](setup.md#自動デプロイ)）
+- 接続（`UNREACHABLE`）で止まっている: mini-pc が起動して Tailscale に繋がっているか、`DEPLOY_HOST`・`DEPLOY_USER` が合っているか
+- `vars/secrets.yml` を開けない: Environment の `ANSIBLE_VAULT_PASSWORD` が vault のパスワードとずれている
+- バックアップで止まっている: mini-pc で `sudo journalctl -u mini-pc-backup` で原因を見る（NAS 側は[初回セットアップ](setup.md#nas-へのバックアップ)の設定を確認）
 - playbook の適用で失敗している: 原因を直して main へ入れるか、revert する
 
 ### main 以外のブランチを試す
 
 本番に入れる前に試すなら、手元でブランチを checkout して [staging 環境](setup.md#staging-環境)へ `make deploy-staging` するのが安全です。本番の mini-pc で試すときは次の手順です。
 
-1. mini-pc で `sudo systemctl disable --now mini-pc-deploy.timer` を実行し、自動デプロイを止める
-2. 手元でブランチを checkout して `make deploy-production`。**`make deploy-production` は自動デプロイのタイマーを再び有効にする**ので、試している間に main へ入った変更で上書きされたくなければ、1 をもう一度実行する
-3. 試し終わったら、手元で main を checkout して `make deploy-production`（タイマーも有効に戻る）
+1. GitHub の Actions で Deploy を「Disable workflow」にする（試している間に main の内容で上書きされないように）
+2. 手元でブランチを checkout して `make deploy-production`
+3. 試し終わったら Deploy を「Enable workflow」に戻し、「Run workflow」で main を適用し直す
 
 ## サービスを操作する
 
@@ -58,13 +54,7 @@ Gemini の API キーを変えるときは、2か所を更新してから古い�
 - plant-diary: `gemini_api_key` を更新して反映する
 - それ以外のアプリ: Bifrost の管理画面で、登録している Gemini のキーを差し替える
 
-vault のパスワードを変えるときは、次の順に行います。自動デプロイは mini-pc に書き出したパスワードで `vars/secrets.yml` を開くため、この2つがずれると失敗し続けます。
-
-1. 手元で `ansible-vault rekey vars/secrets.yml`
-2. `make edit-secrets` で `deploy_vault_password` を新しいパスワードにする
-3. 手元で `make deploy-production`（mini-pc のパスワードファイルが新しい値になる）
-4. すぐに main へ入れる（3 と 4 の間に main へ他の変更が入ると、その回の自動デプロイは失敗する）
-5. mini-pc で `sudo systemctl start mini-pc-deploy` と `journalctl -u mini-pc-deploy` で成功を確かめる
+vault のパスワードを変えるときは、`ansible-vault rekey vars/secrets.yml` した後、main へ入れる前に GitHub の Environment `production` の `ANSIBLE_VAULT_PASSWORD` を新しい値にします。ずれていると自動デプロイが `vars/secrets.yml` を開けずに失敗します。
 
 ## バックアップと復元
 

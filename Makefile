@@ -20,7 +20,7 @@ bootstrap-production: ## 本番への初回のプレイブック実行（sudo �
 bootstrap-staging: ## staging への初回のプレイブック実行（sudo のパスワードを聞く）
 	ansible-playbook $(STAGING) playbook.yml --ask-vault-pass --ask-become-pass
 
-# 一度 bootstrap か deploy を通すと、接続ユーザーの sudo はパスワード無しになる（ADR 0007）
+# 一度 bootstrap か deploy を通すと、本番の接続ユーザーの sudo はパスワード無しになる（ADR 0011）
 deploy-production: ## 本番へのプレイブック実行
 	ansible-playbook $(PRODUCTION) playbook.yml --ask-vault-pass
 

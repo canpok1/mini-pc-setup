@@ -44,8 +44,13 @@ jobs:
           ping: ${{ vars.DEPLOY_HOST }}
 
       - name: Install Ansible
-        # ansible パッケージには community.docker と ansible.posix が同梱されている
-        run: pipx install --include-deps ansible
+        # ansible パッケージには community.docker と ansible.posix が同梱されている。
+        # ランナーには ansible-core が入っていて pipx ではコマンド名がぶつかり、そちらが使われるため、専用の venv に入れて PATH の先頭に置く
+        run: |
+          python3 -m venv "$RUNNER_TEMP/ansible"
+          "$RUNNER_TEMP/ansible/bin/pip" install --quiet ansible
+          echo "$RUNNER_TEMP/ansible/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/ansible/bin/ansible-playbook" --version
 
       - name: Deploy
         env:

@@ -14,8 +14,7 @@
       fail_msg: "vars/secrets.yml に ghcr_token を追加してください（docs/setup.md の「GHCR のトークン」）。"
 
   - name: Check deploy environment
-    # inventories/<環境>/group_vars/all.yml で決まる（ADR 0010）。
-    # host_vars/localhost.yml は旧自動デプロイ（ansible-pull）が最後に一度この変更を適用するときだけ使う
+    # inventories/<環境>/group_vars/all.yml で決まる（ADR 0010）
     ansible.builtin.assert:
       that:
         - deploy_env is defined
